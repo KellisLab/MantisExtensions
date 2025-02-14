@@ -43,7 +43,6 @@ mantis-connection/
 │   │   ├── google/           # Google search connection
 │   │   ├── wikipedia/        # Wikipedia connection
 │   │   └── types.ts         # Connection type definitions
-│   ├── assets/              # Icons and images
 │   ├── background.ts        # Extension background script
 │   ├── config.ts           # Configuration constants
 │   ├── content.tsx         # Content script with UI components
