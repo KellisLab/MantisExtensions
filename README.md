@@ -34,6 +34,8 @@ yarn run build
 yarn run package
 ```
 
+6. Download and run the the backend  [here](https://github.com/KellisLab/MantisExtensionsBackend.git)
+
 ## Project Structure
 
 ```
