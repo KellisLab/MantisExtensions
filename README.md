@@ -1,33 +1,189 @@
-This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
+# Mantis Connection Browser Extension
 
-## Getting Started
+A browser extension that connects third-party applications with Mantis, enabling seamless integration of web content into Mantis spaces.
 
-First, run the development server:
+## Overview
 
+Mantis Connection is a browser extension built with Plasmo Framework that allows users to create and manage Mantis spaces directly from supported web pages. It provides a floating action button that appears on compatible websites and enables content extraction and space creation. It is styled with TailwindCSS
+
+## Installation
+
+1. Clone the repository:
 ```bash
-pnpm dev
-# or
-npm run dev
+git clone https://github.com/KellisLab/MantisExtensions.git
+cd mantis-connection
 ```
 
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
-
+2. Install dependencies:
 ```bash
-pnpm build
-# or
-npm run build
+yarn install
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+3. Development mode:
+```bash
+yarn run dev
+```
 
-## Submit to the webstores
+4. Build for production:
+```bash
+yarn run build
+```
 
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+5. Package the extension:
+```bash
+yarn run package
+```
+
+## Project Structure
+
+```
+mantis-connection/
+├── src/
+│   ├── connections/           # Connection implementations
+│   │   ├── google/           # Google search connection
+│   │   ├── wikipedia/        # Wikipedia connection
+│   │   └── types.ts         # Connection type definitions
+│   ├── assets/              # Icons and images
+│   ├── background.ts        # Extension background script
+│   ├── config.ts           # Configuration constants
+│   ├── content.tsx         # Content script with UI components
+│   ├── driver.ts          # Core connection functionality
+│   ├── persistent.ts      # Storage management
+│   ├── popup.tsx         # Extension popup UI
+│   └── style.css        # Global styles
+├── plasmo.config.ts    # Plasmo framework configuration
+└── package.json
+```
+
+## Core Concepts
+
+### Connections
+
+Connections are implementations that define how to interact with specific websites. Each connection must implement the `MantisConnection` interface:
+
+```typescript
+interface MantisConnection {
+    name: string;
+    description: string;
+    icon: string;
+    trigger: (url: string) => boolean;
+    createSpace: (injectUI: injectUIType, setProgress: setProgressType) => Promise<{
+        spaceId: string;
+        createdWidget: HTMLElement;
+    }>;
+    injectUI: (space_id: string) => Promise<HTMLElement>;
+}
+```
+
+### Storage
+
+The extension uses Chrome's storage API to persist spaces. Spaces are stored with the following structure:
+
+```typescript
+interface StoredSpace {
+    name: string;
+    id: string;
+    dateCreated: string;
+    url: string;
+    host: string;
+    connectionParent: string;
+}
+```
+
+### UI Components
+
+The extension provides several UI components:
+- Floating Action Button (FAB)
+- Connection Dialog
+- Progress Indicators
+- Space Management Interface
+
+## Adding New Connections
+
+To add a new connection:
+
+1. Create a new directory under `src/connections/`
+2. Implement the `MantisConnection` interface
+3. Define the trigger conditions
+4. Implement space creation logic
+5. Implement UI injection
+6. Export the connection
+
+Example:
+
+```typescript
+// src/connections/example/connection.tsx
+import type { MantisConnection } from "../types";
+
+export const ExampleConnection: MantisConnection = {
+    name: "Example",
+    description: "Example connection description",
+    icon: exampleIcon,
+    trigger: (url) => url.includes("example.com"),
+    createSpace: async (injectUI, setProgress) => {
+        // Implementation
+    },
+    injectUI: async (space_id) => {
+        // Implementation
+    }
+};
+```
+
+## Configuration
+
+The extension can be configured through `config.ts`:
+
+```typescript
+export const FRONTEND = "https://mantisdev.csail.mit.edu";
+export const COOKIE_DOMAIN = "mantisdev.csail.mit.edu";
+export const SDK = "http://localhost:5111";
+```
+
+## Development Workflow
+
+1. Make changes to the code
+2. Run `yarn run dev` for development
+3. Load the extension from `build/chrome-mv3-dev/`
+4. Test changes on supported websites
+5. Build and package for production
+
+## API Reference
+
+### Storage API
+
+```typescript
+// Get all cached spaces
+getCachedSpaces(): Promise<StoredSpace[]>
+
+// Add a space to cache
+addSpaceToCache(space: StoredSpace): Promise<void>
+
+// Delete a space from cache
+deleteSpace(space: StoredSpace): Promise<void>
+
+// Delete spaces matching a condition
+deleteSpacesWhere(predicate: (space: StoredSpace) => boolean): Promise<void>
+```
+
+### Connection API
+
+```typescript
+// Search for active connections
+searchConnections(url: string): MantisConnection[]
+
+// Create a new space
+createSpace(injectUI: injectUIType, setProgress: setProgressType): Promise<{
+    spaceId: string;
+    createdWidget: HTMLElement;
+}>
+
+// Inject UI for existing space
+injectUI(space_id: string): Promise<HTMLElement>
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
