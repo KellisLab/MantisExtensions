@@ -3,7 +3,6 @@ import type { MantisConnection, injectUIType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import wikiIcon from "../../../assets/wiki.png";
-import { FRONTEND } from "../../config";
 import { registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
@@ -83,7 +82,7 @@ const injectUI = async (space_id: string) => {
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${FRONTEND}/space/${space_id}`;
+    iframe.src = `${process.env.FRONTEND}/space/${space_id}`;
     iframe.style.border = "none";
     iframe.style.transform = `scale(${scale})`;
     iframe.style.transformOrigin = "top left";

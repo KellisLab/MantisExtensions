@@ -46,7 +46,6 @@ mantis-connection/
 │   │   ├── wikipedia/        # Wikipedia connection
 │   │   └── types.ts         # Connection type definitions
 │   ├── background.ts        # Extension background script
-│   ├── config.ts           # Configuration constants
 │   ├── content.tsx         # Content script with UI components
 │   ├── driver.ts          # Core connection functionality
 │   ├── persistent.ts      # Storage management
@@ -54,6 +53,8 @@ mantis-connection/
 │   └── style.css        # Global styles
 ├── plasmo.config.ts    # Plasmo framework configuration
 └── package.json
+└── .env                # Configuration file for global use
+└── .env.development (not pre-existing) # You have to create this file to use it. It overrides .env and is not tracked
 ```
 
 ## Core Concepts
@@ -132,13 +133,15 @@ export const ExampleConnection: MantisConnection = {
 
 ## Configuration
 
-The extension can be configured through `config.ts`:
+The extension can be configured through `.env` or `.env.development`:
 
-```typescript
-export const FRONTEND = "https://mantisdev.csail.mit.edu";
-export const COOKIE_DOMAIN = "mantisdev.csail.mit.edu";
-export const SDK = "http://localhost:5111";
-```
+* `FRONTEND`: controls where the extension will embed the spaces to
+* `COOKIE_DOMAIN`: will be the domain of frontend, that cookies are registered to. e.g. if `FRONTEND` was `https://mantisdev.csail.mit.edu`, then `COOKIE_DOMAIN` will be `mit.edu`.
+* `SDK`: The domain to use as the extension backend for managing/creating spaces
+
+Ensure that the `FRONTEND` and `COOKIE_DOMAIN` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend, from the `COOKIE_DOMAIN`. This cookie won't work if the backend uses a different domain as the frontend.
+
+If you want to use a local frontend and cookie_domain, then create a `.env.development` file and set the variables in there, this won't be tracked by git.
 
 ## Development Workflow
 

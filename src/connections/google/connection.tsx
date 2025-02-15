@@ -2,7 +2,6 @@ import type { MantisConnection, injectUIType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import googleIcon from "../../../assets/google.png";
-import { FRONTEND, GOOGLE_API_KEY } from "../../config";
 import { registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
@@ -22,7 +21,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
     for (let start = 0; start < 100; start += 10) {
         const baseReqURL = "https://www.googleapis.com/customsearch/v1";
         const params = {
-            key: GOOGLE_API_KEY,
+            key: process.env.GOOGLE_API_KEY,
             cx: "6161a1838d8c34589",
             q: query,
             start: start.toString(),
@@ -107,7 +106,7 @@ const injectUI = async (space_id: string) => {
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${FRONTEND}/space/${space_id}`;
+    iframe.src = `${process.env.FRONTEND}/space/${space_id}`;
     iframe.style.border = "none";
     iframe.style.transform = `scale(${scale})`;
     iframe.style.transformOrigin = "top left";

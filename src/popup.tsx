@@ -1,10 +1,8 @@
 import "./style.css"; // Import tailwind.css
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { searchConnection } from "./driver";
 import { type MantisConnection, type StoredSpace } from "./connections/types";
 import { getCachedSpaces } from "./persistent";
-import { FRONTEND } from "./config";
 
 function IndexPopup() {
   const [spaces, setSpaces] = useState<StoredSpace[] | null>(null);

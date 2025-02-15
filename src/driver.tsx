@@ -1,5 +1,4 @@
 import { GoogleConnection } from "./connections/google/connection";
-import { SDK, COOKIE_DOMAIN } from "./config";
 import { WikipediaConnection } from "./connections/wikipedia/connection";
 
 const CONNECTIONS = [WikipediaConnection, GoogleConnection];
@@ -18,6 +17,8 @@ const refetchAuthCookies = async () => {
                 .map((cookie: any) => `${cookie.name}=${cookie.value}`)
                 .join("; ");
 
+            console.log (COOKIE);
+
             resolve();
         });
     });
@@ -32,7 +33,7 @@ export const searchConnections = (url: string, ) => {
 }
 
 export const reqSpaceCreation = async (data: any, data_types: any, name: string | null = null)  => {
-    const spaceDataResponse = await fetch(`${SDK}/create-space`, {
+    const spaceDataResponse = await fetch(`${process.env.SDK}/create-space`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -62,7 +63,7 @@ export const registerAuthCookies = async () => {
         // Send message to chrome
         await chrome.runtime.sendMessage({
             action: "setCookie",
-            url: COOKIE_DOMAIN,
+            url: process.env.COOKIE_DOMAIN,
             name: cookieName.trim(),
             value: cookieValue?.trim() || "",
             sameSite: "no_restriction"
