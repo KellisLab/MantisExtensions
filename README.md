@@ -135,11 +135,11 @@ export const ExampleConnection: MantisConnection = {
 
 The extension can be configured through `.env` or `.env.development`:
 
-* `FRONTEND`: controls where the extension will embed the spaces to
-* `COOKIE_DOMAIN`: will be the domain of frontend, that cookies are registered to. e.g. if `FRONTEND` was `https://mantisdev.csail.mit.edu`, then `COOKIE_DOMAIN` will be `mit.edu`.
-* `SDK`: The domain to use as the extension backend for managing/creating spaces
+* `PLASMO_PUBLIC_FRONTEND`: controls where the extension will embed the spaces to
+* `PLASMO_PUBLIC_COOKIE_DOMAIN`: will be the domain of frontend, that cookies are registered to. e.g. if `PLASMO_PUBLIC_FRONTEND` was `https://mantisdev.csail.mit.edu`, then `PLASMO_PUBLIC_COOKIE_DOMAIN` will be `mit.edu`.
+* `PLASMO_PUBLIC_SDK`: The domain to use as the extension backend for managing/creating spaces
 
-Ensure that the `FRONTEND` and `COOKIE_DOMAIN` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend, from the `COOKIE_DOMAIN`. This cookie won't work if the backend uses a different domain as the frontend.
+Ensure that the `PLASMO_PUBLIC_FRONTEND` and `PLASMO_PUBLIC_COOKIE_DOMAIN` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend, from the `PLASMO_PUBLIC_COOKIE_DOMAIN`. This cookie won't work if the backend uses a different domain as the frontend.
 
 If you want to use a local frontend and cookie_domain, then create a `.env.development` file and set the variables in there, this won't be tracked by git.
 

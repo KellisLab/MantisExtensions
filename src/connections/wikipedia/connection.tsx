@@ -82,7 +82,7 @@ const injectUI = async (space_id: string) => {
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.FRONTEND}/space/${space_id}`;
+    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
     iframe.style.border = "none";
     iframe.style.transform = `scale(${scale})`;
     iframe.style.transformOrigin = "top left";

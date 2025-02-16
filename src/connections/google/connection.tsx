@@ -21,7 +21,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
     for (let start = 0; start < 100; start += 10) {
         const baseReqURL = "https://www.googleapis.com/customsearch/v1";
         const params = {
-            key: process.env.GOOGLE_API_KEY,
+            key: process.env.PLASMO_PUBLIC_GOOGLE_API_KEY,
             cx: "6161a1838d8c34589",
             q: query,
             start: start.toString(),
@@ -106,7 +106,7 @@ const injectUI = async (space_id: string) => {
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.FRONTEND}/space/${space_id}`;
+    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
     iframe.style.border = "none";
     iframe.style.transform = `scale(${scale})`;
     iframe.style.transformOrigin = "top left";

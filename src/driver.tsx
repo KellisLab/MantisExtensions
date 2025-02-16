@@ -33,7 +33,7 @@ export const searchConnections = (url: string, ) => {
 }
 
 export const reqSpaceCreation = async (data: any, data_types: any, name: string | null = null)  => {
-    const spaceDataResponse = await fetch(`${process.env.SDK}/create-space`, {
+    const spaceDataResponse = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export const registerAuthCookies = async () => {
         // Send message to chrome
         await chrome.runtime.sendMessage({
             action: "setCookie",
-            url: process.env.COOKIE_DOMAIN,
+            url: process.env.PLASMO_PUBLIC_COOKIE_DOMAIN,
             name: cookieName.trim(),
             value: cookieValue?.trim() || "",
             sameSite: "no_restriction"

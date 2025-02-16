@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // e.g. "mantisdev.csail.mit.edu" or "localhost"
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getAuthCookies") {
-        chrome.cookies.getAll({ domain: process.env.COOKIE_DOMAIN }, (cookies) => sendResponse({ cookies }));
+        chrome.cookies.getAll({ domain: process.env.PLASMO_PUBLIC_COOKIE_DOMAIN }, (cookies) => sendResponse({ cookies }));
 
         return true;
     }
