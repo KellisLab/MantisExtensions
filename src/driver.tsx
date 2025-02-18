@@ -1,8 +1,9 @@
 import { url } from "inspector";
 import { GoogleConnection } from "./connections/google/connection";
 import { WikipediaConnection } from "./connections/wikipedia/connection";
+import { PubmedConnection } from "./connections/pubmed/connection";
 
-const CONNECTIONS = [WikipediaConnection, GoogleConnection];
+const CONNECTIONS = [WikipediaConnection, GoogleConnection, PubmedConnection];
 
 let COOKIE: string = "";
 

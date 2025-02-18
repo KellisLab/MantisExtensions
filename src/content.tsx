@@ -100,7 +100,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
             setSpaceId(_spaceId);
         } catch (e: any) {
             setState(GenerationProgress.FAILED);
-            setErrorText(`Message: ${e.message}`);
+            setErrorText(`Message: ${e.message}. Stack Trace: ${e.stack}`);
         } finally {
             setRunning(false);
         }
@@ -132,7 +132,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                 <img
                     src={activeConnection.icon}
                     alt="Connection icon"
-                    className="w-8 h-8"
+                    className="h-8"
                 />
                 <div className="flex flex-col justify-center">
                     <p className="text-xl font-bold leading-tight">{activeConnection.name}</p>
