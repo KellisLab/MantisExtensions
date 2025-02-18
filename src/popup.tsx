@@ -3,11 +3,13 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { type MantisConnection, type StoredSpace } from "./connections/types";
 import { getCachedSpaces } from "./persistent";
+import { searchConnections } from "./driver";
+import { connect } from "http2";
 
 function IndexPopup() {
   const [spaces, setSpaces] = useState<StoredSpace[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentHost, setCurrentHost] = useState("");
+  const [currentConnections, setCurrentConnections] = useState([]);
 
   useEffect(() => {
     getCachedSpaces().then((cachedSpaces) => {
@@ -18,11 +20,10 @@ function IndexPopup() {
   useEffect(() => {
     // Get current tab that is opened
     // This is used to highlight the spaces that
-    // are from the same host
+    // are from the same connection
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       if (tabs[0]?.url) {
-        const urlObj = new URL(tabs[0].url);
-        setCurrentHost(urlObj.hostname);
+        setCurrentConnections(searchConnections(tabs[0].url).map((connection) => connection.name));
       }
     });
   }, []);
@@ -38,10 +39,10 @@ function IndexPopup() {
     searchedSpaces = spaces.filter((space) => space.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }
 
-  // Filter spaces by search query and group by host
+  // Filter spaces by search query and group by connection parent
   const groupedSpaces = searchedSpaces.reduce((groups: Record<string, StoredSpace[]>, space) => {
-    groups[space.host] = groups[space.host] || [];
-    groups[space.host].push(space);
+    groups[space.connectionParent] = groups[space.connectionParent] || [];
+    groups[space.connectionParent].push(space);
     return groups;
   }, {});
 
@@ -56,15 +57,16 @@ function IndexPopup() {
           className="w-full p-2 border rounded"
         />
       </div>
-      {Object.keys(groupedSpaces).map((host) => (
+      {Object.keys(groupedSpaces).map((connectionParent) => (
         <div
-          key={host}
-          className={`mb-6 p-4 shadow-md rounded ${host === currentHost ? "bg-gradient-to-r from-cyan-300 to-cyan-400" : "bg-gray-50 border-gray-200"
+          key={connectionParent}
+          /* Color it differently if the current page has this plugin activated*/
+          className={`mb-6 p-4 shadow-md rounded ${currentConnections.includes(connectionParent) ? "bg-gradient-to-r from-cyan-300 to-cyan-400" : "bg-gray-50 border-gray-200"
             }`}
         >
-          <h2 className="text-lg font-bold mb-2">{host}</h2>
+          <h2 className="text-lg font-bold mb-2">{connectionParent}</h2>
           <ul>
-            {groupedSpaces[host].map((space) => (
+            {groupedSpaces[connectionParent].map((space) => (
               <>
                 <div className="group items-center bg-white p-4 rounded-xl shadow-md mb-2 transition-all duration-300 transform hover:px-8 cursor-pointer"
                   onClick={() => {

@@ -8,6 +8,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             path: "/",
             secure: true,
             sameSite: request.sameSite || "strict",
+            httpOnly: false,
             expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
         }, () => sendResponse({ success: true }))
         return true // Keep the message channel open for async response
@@ -29,8 +30,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // hosting the Mantis frontend that we are using
 // e.g. "mantisdev.csail.mit.edu" or "localhost"
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    const frontendUrl = new URL(process.env.PLASMO_PUBLIC_FRONTEND);
+
     if (request.action === "getAuthCookies") {
-        chrome.cookies.getAll({ domain: process.env.PLASMO_PUBLIC_COOKIE_DOMAIN }, (cookies) => sendResponse({ cookies }));
+        chrome.cookies.getAll({ domain: frontendUrl.hostname }, (cookies) => sendResponse({ cookies }));
 
         return true;
     }

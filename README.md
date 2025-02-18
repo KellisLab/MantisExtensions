@@ -21,17 +21,17 @@ yarn install
 
 3. Development mode:
 ```bash
-yarn run dev
+yarn dev
 ```
 
 4. Build for production:
 ```bash
-yarn run build
+yarn build
 ```
 
 5. Package the extension:
 ```bash
-yarn run package
+yarn package
 ```
 
 6. Download and run the the backend  [here](https://github.com/KellisLab/MantisExtensionsBackend.git)
@@ -136,18 +136,17 @@ export const ExampleConnection: MantisConnection = {
 The extension can be configured through `.env` or `.env.development`:
 
 * `PLASMO_PUBLIC_FRONTEND`: controls where the extension will embed the spaces to
-* `PLASMO_PUBLIC_COOKIE_DOMAIN`: will be the domain of frontend, that cookies are registered to. e.g. if `PLASMO_PUBLIC_FRONTEND` was `https://mantisdev.csail.mit.edu`, then `PLASMO_PUBLIC_COOKIE_DOMAIN` will be `mit.edu`.
 * `PLASMO_PUBLIC_SDK`: The domain to use as the extension backend for managing/creating spaces
 
-Ensure that the `PLASMO_PUBLIC_FRONTEND` and `PLASMO_PUBLIC_COOKIE_DOMAIN` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend, from the `PLASMO_PUBLIC_COOKIE_DOMAIN`. This cookie won't work if the backend uses a different domain as the frontend.
+Ensure that the `PLASMO_PUBLIC_FRONTEND` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend from the hostname of `PLASMO_PUBLIC_FRONTEND`. This cookie won't work if the backend uses a different domain as the frontend.
 
-If you want to use a local frontend and cookie_domain, then create a `.env.development` file and set the variables in there, this won't be tracked by git.
+If you want to use a local frontend, then create a `.env.development` file and set `PLASMO_PUBLIC_FRONTEND=http://localhost:3000`, this won't be tracked by git.
 
 ## Development Workflow
 
 1. Make changes to the code
-2. Run `yarn run dev` for development
-3. Load the extension from `build/chrome-mv3-dev/`
+2. Run `yarn dev` for development
+3. Go to `chrome://extensions` in your browser and load the extension from `build/chrome-mv3-dev/`
 4. Test changes on supported websites
 5. Build and package for production
 

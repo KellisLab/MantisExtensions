@@ -1,3 +1,4 @@
+import { url } from "inspector";
 import { GoogleConnection } from "./connections/google/connection";
 import { WikipediaConnection } from "./connections/wikipedia/connection";
 
@@ -16,8 +17,6 @@ const refetchAuthCookies = async () => {
             COOKIE = response.cookies
                 .map((cookie: any) => `${cookie.name}=${cookie.value}`)
                 .join("; ");
-
-            console.log (COOKIE);
 
             resolve();
         });
@@ -57,13 +56,20 @@ export const registerAuthCookies = async () => {
     // Get the latest and greatest cookies from COOKIE domain
     await refetchAuthCookies ();
 
+    const frontendUrl = new URL(process.env.PLASMO_PUBLIC_FRONTEND);
+
     for (const cookieStr of COOKIE.split(";")) {
-        const [cookieName, cookieValue] = cookieStr.split("=", 2);
+        let [cookieName, cookieValue] = cookieStr.split("=", 2);
+        cookieName = cookieName.trim();
+
+        if (!cookieName) {
+            continue;
+        }
 
         // Send message to chrome
         await chrome.runtime.sendMessage({
             action: "setCookie",
-            url: process.env.PLASMO_PUBLIC_COOKIE_DOMAIN,
+            url: `https://${frontendUrl.hostname}`, // For some reason it only works if we force the domain to use https
             name: cookieName.trim(),
             value: cookieValue?.trim() || "",
             sameSite: "no_restriction"

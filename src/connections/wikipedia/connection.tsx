@@ -17,13 +17,8 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     console.log(`Collected ${references.length} references`);
 
-    let counter = 0;
-
     for (const reference of references) {
         const url = new URL(reference.href);
-
-        if (counter >= 150) break;
-        counter += 1;
 
         try {
             const response = await fetch(url.href);
@@ -35,7 +30,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
             const articleElement = doc.querySelectorAll("#mw-content-text > div > p");
 
-            const totalText = Array.from(articleElement).map((element) => element.textContent).join(" ");
+            const totalText = Array.from(articleElement).map((element) => element.textContent).join(" ").substring (0, 200);
 
             const title = reference.title;
 
@@ -48,8 +43,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
             console.error("Error fetching Wikipedia article:", error);
         }
     }
-
-    console.log(extractedData);
 
     setProgress(GenerationProgress.CREATING_SPACE);
 
@@ -78,7 +71,6 @@ const injectUI = async (space_id: string) => {
     const iframeScalerParent = document.createElement("div");
     iframeScalerParent.style.width = "100%";
     iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.display = "none";
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
@@ -91,7 +83,7 @@ const injectUI = async (space_id: string) => {
     iframe.style.overflow = "hidden";
     iframeScalerParent.appendChild(iframe);
 
-    document.querySelector("body > div.mw-page-container > div").prepend(iframeScalerParent);
+    document.querySelector("body > div.mw-page-container").prepend(iframeScalerParent);
 
     return iframeScalerParent;
 }
