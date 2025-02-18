@@ -11,7 +11,7 @@ Mantis Connection is a browser extension built with Plasmo Framework that allows
 1. Clone the repository:
 ```bash
 git clone https://github.com/KellisLab/MantisExtensions.git
-cd mantis-connection
+cd MantisExtensions
 ```
 
 2. Install dependencies:
