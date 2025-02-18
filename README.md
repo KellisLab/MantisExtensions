@@ -131,6 +131,12 @@ export const ExampleConnection: MantisConnection = {
 };
 ```
 
+Then make sure to update `driver.tsx` so that your connection is actually being used:
+
+```typescript driver.tsx
+const CONNECTIONS = [WikipediaConnection, GoogleConnection, ..., YourConnectionHere];
+```
+
 ## Configuration
 
 The extension can be configured through `.env` or `.env.development`:
