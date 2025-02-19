@@ -41,19 +41,19 @@ yarn package
 ```
 mantis-connection/
 ├── src/
-│   ├── connections/           # Connection implementations
-│   │   ├── google/           # Google search connection
-│   │   ├── wikipedia/        # Wikipedia connection
-│   │   └── types.ts         # Connection type definitions
-│   ├── background.ts        # Extension background script
-│   ├── content.tsx         # Content script with UI components
-│   ├── driver.ts          # Core connection functionality
-│   ├── persistent.ts      # Storage management
-│   ├── popup.tsx         # Extension popup UI
-│   └── style.css        # Global styles
-├── plasmo.config.ts    # Plasmo framework configuration
+│   ├── connections/                    # Connection implementations
+│   │   ├── google/                     # Google search connection
+│   │   ├── wikipediaReferences/        # Wikipedia connection
+│   │   └── types.ts                    # Connection type definitions
+│   ├── background.ts                   # Extension background script
+│   ├── content.tsx                     # Content script with UI components
+│   ├── driver.ts                       # Core connection functionality
+│   ├── persistent.ts                   # Storage management
+│   ├── popup.tsx                       # Extension popup UI
+│   └── style.css                       # Global styles
+├── plasmo.config.ts                    # Plasmo framework configuration
 └── package.json
-└── .env                # Configuration file for global use
+└── .env                                # Configuration file for global use
 └── .env.development (not pre-existing) # You have to create this file to use it. It overrides .env and is not tracked
 ```
 
@@ -134,7 +134,7 @@ export const ExampleConnection: MantisConnection = {
 Then make sure to update `driver.tsx` so that your connection is actually being used:
 
 ```typescript driver.tsx
-const CONNECTIONS = [WikipediaConnection, GoogleConnection, ..., YourConnectionHere];
+const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, ..., YourConnectionHere];
 ```
 
 ## Configuration

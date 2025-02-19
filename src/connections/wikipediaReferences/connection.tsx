@@ -88,8 +88,8 @@ const injectUI = async (space_id: string) => {
     return iframeScalerParent;
 }
 
-export const WikipediaConnection: MantisConnection = {
-    name: "Wikipedia",
+export const WikipediaReferencesConnection: MantisConnection = {
+    name: "Wikipedia References",
     description: "Builds spaces based on the references in a Wikipedia article",
     icon: wikiIcon,
     trigger: trigger,

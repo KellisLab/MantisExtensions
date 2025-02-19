@@ -1,9 +1,9 @@
 import { url } from "inspector";
 import { GoogleConnection } from "./connections/google/connection";
-import { WikipediaConnection } from "./connections/wikipedia/connection";
+import { WikipediaReferencesConnection } from "./connections/wikipediaReferences/connection";
 import { PubmedConnection } from "./connections/pubmed/connection";
 
-const CONNECTIONS = [WikipediaConnection, GoogleConnection, PubmedConnection];
+const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, PubmedConnection];
 
 let COOKIE: string = "";
 
@@ -18,6 +18,8 @@ const refetchAuthCookies = async () => {
             COOKIE = response.cookies
                 .map((cookie: any) => `${cookie.name}=${cookie.value}`)
                 .join("; ");
+
+            console.log (COOKIE);
 
             resolve();
         });
