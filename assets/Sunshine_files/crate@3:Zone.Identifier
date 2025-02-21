@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://localhost:47990/
+HostUrl=https://cdn.jsdelivr.net/npm/@widgetbot/crate@3
