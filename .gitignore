@@ -37,3 +37,6 @@ keys.json
 
 # typescript
 .tsbuildinfo
+
+# Windows Zone.Identifier files
+*:Zone.Identifier
