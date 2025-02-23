@@ -37,6 +37,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
             extractedData.push({
                 title,
                 link: url.href,
+                __mantis_href: url.href,
                 text: totalText,
             });
         } catch (error) {
@@ -49,7 +50,8 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
     const spaceData = await reqSpaceCreation(extractedData, {
         "title": "title",
         "link": "links",
-        "text": "semantic"
+        "__mantis_href": "links",
+        "text": "semantic",
     });
 
     setProgress(GenerationProgress.INJECTING_UI);

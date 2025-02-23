@@ -3,8 +3,9 @@ import { GoogleConnection } from "./connections/google/connection";
 import { WikipediaReferencesConnection } from "./connections/wikipediaReferences/connection";
 import { PubmedConnection } from "./connections/pubmed/connection";
 import { GoogleDocsConnection } from "./connections/googleDocs/connection";
+import { GoogleScholarConnection } from "./connections/googleScholar/connection";
 
-const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection];
+const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
 
 let COOKIE: string = "";
 
