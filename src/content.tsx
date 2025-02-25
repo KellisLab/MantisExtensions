@@ -135,7 +135,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                     className="h-8"
                 />
                 <div className="flex flex-col justify-center">
-                    <p className="text-xl font-bold leading-tight">{activeConnection.name}</p>
+                    <p className="text-black text-xl font-bold leading-tight">{activeConnection.name}</p>
                     <p className="text-gray-600">{activeConnection.description}</p>
                 </div>
             </div>
@@ -247,7 +247,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                         <ArrowHead disabled={connectionIdx === 0} left />
                     </button>
                     <div className="flex-grow" />
-                    <span className="text-gray-600">
+                    <span className="text-black-600">
                         {connectionIdx + 1}/{activeConnections.length}
                     </span>
                     <div className="flex-grow" />
@@ -263,17 +263,17 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
             <div className="h-2" />
             <hr />
             <div className="h-8" />
-            <h2 className="text-lg font-semibold">Space Name</h2>
+            <h2 className="text-black text-lg font-semibold">Space Name</h2>
             <input
                 type="text"
                 value={dataName || ""}
                 onChange={(e) => setDataName(e.target.value)}
-                className="w-full p-2 bg-gray-100 rounded"
+                className="text-black w-full p-2 bg-gray-100 rounded"
             />
             {noteText && (
                 <>
                     <div className="h-2" />
-                    <p className="text-gray-500">{noteText}</p>
+                    <p className="text-black-500">{noteText}</p>
                 </>
             )}
             <button
