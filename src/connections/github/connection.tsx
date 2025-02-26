@@ -10,82 +10,25 @@ const trigger = (url: string) => {
     return url.includes("github.com/") && url.includes("/"); 
 };
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
-    setProgress(GenerationProgress.GATHERING_DATA);
+const { Octokit } = require("@octokit/core");
 
-    const url = new URL(window.location.href);
-    const pathParts = url.pathname.split("/").filter(Boolean); // Removes empty strings
 
-    // Extract the username and repository name
-    const username = pathParts[0] || null;
-    const repo = pathParts[1] ? `${username}/${pathParts[1]}` : null;
-
-    if (!repo) {
-        throw new Error("Repository name is required.");
-    }
-
-    const commitsUrl = `https://api.github.com/repos/${repo}/commits`;
-
-    const searchResults = [];
-
-    for (let page = 1; page <= 10; page++) {
-        const response = await fetch(`${commitsUrl}?page=${page}&per_page=100`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch commits: ${await response.text()}`);
-        }
-
-        const data = await response.json();
-
-        for (const commit of data) {
-            //const diffUrl = commit.html_url;
-            const commitSha = commit.sha;
-            const diffUrl = `https://github.com/${repo}/commit/${commitSha}.diff`;
-            const diffResponse = await fetch(diffUrl);
-
-            const diffText = diffResponse.ok ? await diffResponse.text() : "Diff unavailable";
-            
-            searchResults.push({
-                message: commit.commit.message,
-                author: commit.commit.author.name,
-                date: commit.commit.author.date,
-                link: commit.html_url,
-                diff: diffText
-            });
-        }
-    }
-
-    setProgress(GenerationProgress.CREATING_SPACE);
-
-    const spaceData = await reqSpaceCreation(searchResults, {
-        "repo_name": "title",
-        "message": "semantic",
-        "author": "categoric",
-        "date": "date",
-        "link": "links",
-        "diff": "semantic"
-    }, repo);
-
-    setProgress(GenerationProgress.INJECTING_UI);
-
-    const spaceId = spaceData.space_id;
-
-    const createdWidget = await injectUI(spaceId);
-
-    setProgress(GenerationProgress.COMPLETED);
-
-    return { spaceId, createdWidget };
-};
+const octokit = new Octokit({
+    auth: process.env.PLASMO_PUBLIC_GITHUB_AUTH
+})
 
 const injectUI = async (space_id: string) => {
-    await registerAuthCookies();
 
     const scale = 0.75;
 
-    // Create the iframe, hidden by default
     const iframeScalerParent = document.createElement("div");
     iframeScalerParent.style.width = "100%";
     iframeScalerParent.style.height = "80vh";
     iframeScalerParent.style.border = "none";
+    iframeScalerParent.style.display = "block";
+    iframeScalerParent.style.position = "relative"; 
+
+    await registerAuthCookies();
 
     const iframe = document.createElement("iframe");
     iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
@@ -97,9 +40,101 @@ const injectUI = async (space_id: string) => {
     iframe.style.overflow = "hidden";
     iframeScalerParent.appendChild(iframe);
 
-    document.querySelector("#docs-editor-container").prepend (iframeScalerParent);
+    const repoContent = document.querySelector(".repository-content");
+    if (repoContent) {
+        repoContent.prepend(iframeScalerParent);
+    } else {
+        console.error("Repository content element not found");
+    }
+
 
     return iframeScalerParent;
+}
+
+const createSpace = async (injectUI: any, setProgress: any) => {
+    setProgress(GenerationProgress.GATHERING_DATA);
+
+    const currentUrl = new URL(window.location.href);
+    const repoPath = currentUrl.pathname.slice(1);
+    const [owner, repo] = repoPath.split('/');
+    console.log(owner, repo);
+
+    if (!owner || !repo) {
+        throw new Error("Invalid GitHub repository URL");
+    }
+
+    // Get commits using Octokit
+    const response = await octokit.request(`GET /repos/${owner}/${repo}/commits`, {
+        owner: owner,
+        repo: repo,
+        headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+    });
+
+    let commits = [];
+    for (const data of response.data) {
+        const commitSha = data.sha;
+        const message = data.commit.message;
+        const author = data.commit.author.name;
+        const date = data.commit.author.date;
+        const link = data.html_url;
+        let diff = "Diff unavailable";
+
+        try {
+            const diffResponse = await octokit.request(`GET /repos/${owner}/${repo}/commits/${commitSha}`, {
+                owner: owner,
+                repo: repo,
+                ref: commitSha,
+                headers: { accept: 'application/vnd.github.v3.diff' }
+            });
+            diff = diffResponse.data as string;
+        } catch (e) {
+            diff = "Diff unavailable";
+        }
+        commits.push({ message, author, date, link, diff });
+    }
+    commits = commits.reverse();
+
+    let extractedData = [];
+    commits.forEach((commit, idx) => {
+        const title = `Commit ${idx + 1}`;
+        extractedData.push({ 
+            title: title, 
+            idx: idx, 
+            commit: commit.message,
+            author: commit.author,
+            date: commit.date,
+            link: commit.link,
+            diff: commit.diff
+        });
+    });
+    console.log(extractedData);
+
+    setProgress(GenerationProgress.CREATING_SPACE);
+
+    const spaceData = await reqSpaceCreation(
+        extractedData,
+        {
+            "title": "title",
+            "idx": "numeric",
+            "commit": "semantic",
+            "author": "categoric",
+            "date": "date",
+            "link": "links",
+            "diff": "semantic"
+        }
+    );
+    console.log(spaceData);
+
+    setProgress(GenerationProgress.INJECTING_UI);
+
+    const spaceId = spaceData.space_id;
+    const createdWidget = await injectUI(spaceId);
+
+    setProgress(GenerationProgress.COMPLETED);
+
+    return { spaceId, createdWidget };
 }
 
 export const GitHubConnection: MantisConnection = {
