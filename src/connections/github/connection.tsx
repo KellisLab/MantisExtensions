@@ -1,4 +1,3 @@
-import { create } from "domain";
 import type { MantisConnection, injectUIType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 import escodegen from "escodegen";
@@ -7,18 +6,16 @@ import githubIcon from "../../../assets/github.png";
 import { registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
-    return url.includes("github.com/") && url.includes("/"); 
+    return url.includes("github.com/") && url.includes("/");
 };
 
 const { Octokit } = require("@octokit/core");
 
-
 const octokit = new Octokit({
     auth: process.env.PLASMO_PUBLIC_GITHUB_AUTH
-})
+});
 
 const injectUI = async (space_id: string) => {
-
     const scale = 0.75;
 
     const iframeScalerParent = document.createElement("div");
@@ -47,9 +44,8 @@ const injectUI = async (space_id: string) => {
         console.error("Repository content element not found");
     }
 
-
     return iframeScalerParent;
-}
+};
 
 const createSpace = async (injectUI: any, setProgress: any) => {
     setProgress(GenerationProgress.GATHERING_DATA);
@@ -63,17 +59,26 @@ const createSpace = async (injectUI: any, setProgress: any) => {
         throw new Error("Invalid GitHub repository URL");
     }
 
-    // Get commits using Octokit
-    const response = await octokit.request(`GET /repos/${owner}/${repo}/commits`, {
-        owner: owner,
-        repo: repo,
-        headers: {
-            'X-GitHub-Api-Version': '2022-11-28'
-        }
-    });
+    let allCommits = [];
+    let page = 1;
+    while (true) {
+        const response = await octokit.request(`GET /repos/${owner}/${repo}/commits`, {
+            owner: owner,
+            repo: repo,
+            per_page: 100,
+            page: page,
+            headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        if (response.data.length === 0) break;
+        allCommits.push(...response.data);
+        if (response.data.length < 100) break;
+        page++;
+    }
 
     let commits = [];
-    for (const data of response.data) {
+    for (const data of allCommits) {
         const commitSha = data.sha;
         const message = data.commit.message;
         const author = data.commit.author.name;
@@ -81,17 +86,18 @@ const createSpace = async (injectUI: any, setProgress: any) => {
         const link = data.html_url;
         let diff = "Diff unavailable";
 
-        try {
-            const diffResponse = await octokit.request(`GET /repos/${owner}/${repo}/commits/${commitSha}`, {
-                owner: owner,
-                repo: repo,
-                ref: commitSha,
-                headers: { accept: 'application/vnd.github.v3.diff' }
-            });
-            diff = diffResponse.data as string;
-        } catch (e) {
-            diff = "Diff unavailable";
-        }
+        // try {
+        //     const diffResponse = await octokit.request(`GET /repos/${owner}/${repo}/commits/${commitSha}`, {
+        //         owner: owner,
+        //         repo: repo,
+        //         ref: commitSha,
+        //         headers: { accept: 'application/vnd.github.v3.diff' }
+        //     });
+        //     diff = diffResponse.data as string;
+        // } catch (e) {
+        //     diff = "Diff unavailable";
+        // }
+
         commits.push({ message, author, date, link, diff });
     }
     commits = commits.reverse();
@@ -123,7 +129,8 @@ const createSpace = async (injectUI: any, setProgress: any) => {
             "date": "date",
             "link": "links",
             "diff": "semantic"
-        }
+        },
+        repo
     );
     console.log(spaceData);
 
@@ -135,7 +142,7 @@ const createSpace = async (injectUI: any, setProgress: any) => {
     setProgress(GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
-}
+};
 
 export const GitHubConnection: MantisConnection = {
     name: "GitHub Commits",
