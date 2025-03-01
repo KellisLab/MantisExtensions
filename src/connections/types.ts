@@ -28,7 +28,7 @@ export interface MantisConnection {
     description: string; // A brief description of what the connection does
     icon: string; // The icon URL to display for the connection
     trigger: (url: string) => boolean; // A function that returns true if the connection should be used for any given URL
-    createSpace: (injectUI: injectUIType, setProgress: setProgressType) => Promise<CreateSpaceResult>; // A function that creates a space and returns the spaceId
+    createSpace: (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => Promise<CreateSpaceResult>; // A function that creates a space and returns the spaceId
     injectUI: injectUIType; // A function that injects the UI into the page
     onMessage?: onMessageType; // A function that handles messages from the injected Mantis
 }

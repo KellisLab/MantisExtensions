@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("scholar.google.com/scholar?");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     const url = new URL(window.location.href);
@@ -66,7 +66,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
     setProgress (GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage);
 
     setProgress (GenerationProgress.COMPLETED);
 

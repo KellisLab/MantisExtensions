@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     // Extract k param from the URL
@@ -62,7 +62,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     const spaceId = spaceData.space_id;
 
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage);
 
     setProgress (GenerationProgress.COMPLETED);
 

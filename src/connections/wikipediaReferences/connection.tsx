@@ -9,7 +9,7 @@ const trigger = (url: string) => {
     return url.includes("en.wikipedia.org/wiki");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const references = document.querySelectorAll<HTMLAnchorElement>("p > a[title][href]");
@@ -58,7 +58,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     const spaceId = spaceData.space_id;
 
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage);
 
     setProgress(GenerationProgress.COMPLETED);
 
