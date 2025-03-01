@@ -10,8 +10,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sameSite: request.sameSite || "strict",
             httpOnly: false,
             expirationDate: Math.floor(Date.now() / 1000) + 3600 // 1 hour
-        }, () => sendResponse({ success: true }))
-        return true // Keep the message channel open for async response
+        }, () => sendResponse({ success: true }));
+        
+        return true; // Keep the message channel open for async response
     }
 })
 
@@ -21,8 +22,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.cookies.get({
             url: request.url,
             name: request.name
-        }, (cookie) => sendResponse({ cookie }))
-        return true
+        }, (cookie) => sendResponse({ cookie }));
+
+        return true;
     }
 })
 
@@ -34,6 +36,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === "getAuthCookies") {
         chrome.cookies.getAll({ domain: frontendUrl.hostname }, (cookies) => sendResponse({ cookies }));
+
+        return true;
+    }
+});
+
+const communications = {};
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "registerCommunication") {
+        const uuid = request.uuid;
+
+        communications[uuid] = request.onMessage;
 
         return true;
     }

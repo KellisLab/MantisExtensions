@@ -127,7 +127,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 const injectUI = async (space_id: string) => {
     await registerAuthCookies();
 
-    const iframeScalerParent = getSpacePortal (space_id);
+    const iframeScalerParent = await getSpacePortal (space_id);
 
     document.querySelector("#docs-editor-container").prepend (iframeScalerParent);
 
