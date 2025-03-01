@@ -1,6 +1,6 @@
-export type injectUIType = (space_id: string) => Promise<HTMLElement>;
 export type setProgressType = (progress: GenerationProgress) => void;
 export type onMessageType = (messageType: string, messagePayload: any) => void;
+export type injectUIType = (space_id: string, onMessage: onMessageType) => Promise<HTMLElement>;
 
 // Defines the stages in the generation process
 export enum GenerationProgress {

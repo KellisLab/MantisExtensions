@@ -43,6 +43,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 const communications = {};
 
+// This is used to register communication channels between the background script and the injected Mantis
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "registerCommunication") {
         const uuid = request.uuid;
@@ -50,5 +51,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         communications[uuid] = request.onMessage;
 
         return true;
+    }
+});
+
+// Receive messages from the injected Mantis
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "mantis_msg") {
+        const uuid = request.uuid;
+
+        if (communications[uuid]) {
+            communications[uuid](request.messageType, request.messagePayload);
+        }
     }
 });

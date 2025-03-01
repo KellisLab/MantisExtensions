@@ -1,4 +1,4 @@
-import type { MantisConnection, injectUIType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import googleScholarIcon from "../../../assets/scholar.png";
@@ -72,10 +72,10 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string) => {
+const injectUI = async (space_id: string, onMessage: onMessageType) => {
     await registerAuthCookies();
 
-    const iframeScalerParent = await getSpacePortal (space_id);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage);
 
     document.querySelector("#gs_bdy_ccl").prepend(iframeScalerParent);
 
