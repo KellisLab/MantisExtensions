@@ -64,6 +64,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     return { spaceId, createdWidget };
 }
+
 const injectUI = async (space_id: string) => {
     await registerAuthCookies();
 
@@ -74,11 +75,16 @@ const injectUI = async (space_id: string) => {
     return iframeScalerParent;
 }
 
+const onMessage = async (messageType, messagePayload) => {
+
+};
+
 export const WikipediaReferencesConnection: MantisConnection = {
     name: "Wikipedia References",
     description: "Builds spaces based on the references in a Wikipedia article",
     icon: wikiIcon,
     trigger: trigger,
     createSpace: createSpace,
+    onMessage: onMessage,
     injectUI: injectUI,
 }

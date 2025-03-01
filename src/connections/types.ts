@@ -29,6 +29,7 @@ export interface MantisConnection {
     trigger: (url: string) => boolean; // A function that returns true if the connection should be used for any given URL
     createSpace: (injectUI: injectUIType, setProgress: setProgressType) => Promise<CreateSpaceResult>; // A function that creates a space and returns the spaceId
     injectUI: injectUIType; // A function that injects the UI into the page
+    onMessage?: (messageType: string, messagePayload: any) => void; // A function that handles messages from the injected Mantis
 }
 
 // This is what is stored in chrome local storage

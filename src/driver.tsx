@@ -39,6 +39,9 @@ export const searchConnections = (url: string, ) => {
 export const getSpacePortal = (space_id: string) => {
     const scale = 0.75;
 
+    // Generate uuidv4 using the browser's crypto API
+    const uuidv4 = crypto.randomUUID();
+
     // Create the iframe, hidden by default
     const iframeScalerParent = document.createElement("div");
     iframeScalerParent.style.width = "100%";
@@ -46,7 +49,7 @@ export const getSpacePortal = (space_id: string) => {
     iframeScalerParent.style.border = "none";
 
     const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
+    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}?uuid=${uuidv4}`;
     iframe.style.border = "none";
     iframe.style.transform = `scale(${scale})`;
     iframe.style.transformOrigin = "top left";
