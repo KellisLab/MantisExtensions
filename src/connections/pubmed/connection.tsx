@@ -3,7 +3,7 @@ import type { MantisConnection, injectUIType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import pubmedIcon from "../../../assets/pubmed.png";
-import { registerAuthCookies, reqSpaceCreation } from "../../driver";
+import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 interface PubMedAuthor {
     LastName?: string;
@@ -192,23 +192,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 const injectUI = async (space_id: string) => {
     await registerAuthCookies();
 
-    const scale = 0.75;
-
-    // Create the iframe, hidden by default
-    const iframeScalerParent = document.createElement("div");
-    iframeScalerParent.style.width = "100%";
-    iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.border = "none";
-
-    const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
-    iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
-    iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
-    iframe.style.overflow = "hidden";
-    iframeScalerParent.appendChild(iframe);
+    const iframeScalerParent = getSpacePortal (space_id);
 
     document.querySelector("main > div[class='inner-wrap']").prepend(iframeScalerParent);
 

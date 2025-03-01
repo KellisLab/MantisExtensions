@@ -34,7 +34,29 @@ export const searchConnections = (url: string, ) => {
     const connections = CONNECTIONS.filter(connection => connection.trigger(url));
 
     return connections;
-}
+};
+
+export const getSpacePortal = (space_id: string) => {
+    const scale = 0.75;
+
+    // Create the iframe, hidden by default
+    const iframeScalerParent = document.createElement("div");
+    iframeScalerParent.style.width = "100%";
+    iframeScalerParent.style.height = "80vh";
+    iframeScalerParent.style.border = "none";
+
+    const iframe = document.createElement("iframe");
+    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
+    iframe.style.border = "none";
+    iframe.style.transform = `scale(${scale})`;
+    iframe.style.transformOrigin = "top left";
+    iframe.style.width = (100 / scale).toString() + "%";
+    iframe.style.height = (80 / scale).toString() + "vh";
+    iframe.style.overflow = "hidden";
+    iframeScalerParent.appendChild(iframe);
+
+    return iframeScalerParent;
+};
 
 export const reqSpaceCreation = async (data: any, data_types: any, name: string | null = null)  => {
     const spaceDataResponse = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
