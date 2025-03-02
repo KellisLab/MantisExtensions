@@ -1,5 +1,7 @@
-export type injectUIType = (space_id: string) => Promise<HTMLElement>;
 export type setProgressType = (progress: GenerationProgress) => void;
+export type onMessageType = (messageType: string, messagePayload: any) => void;
+export type registerListenersType = (sendMessage: (command: string, args: any[]) => void) => void;
+export type injectUIType = (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => Promise<HTMLElement>;
 
 // Defines the stages in the generation process
 export enum GenerationProgress {
@@ -27,8 +29,10 @@ export interface MantisConnection {
     description: string; // A brief description of what the connection does
     icon: string; // The icon URL to display for the connection
     trigger: (url: string) => boolean; // A function that returns true if the connection should be used for any given URL
-    createSpace: (injectUI: injectUIType, setProgress: setProgressType) => Promise<CreateSpaceResult>; // A function that creates a space and returns the spaceId
+    createSpace: (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => Promise<CreateSpaceResult>; // A function that creates a space and returns the spaceId
     injectUI: injectUIType; // A function that injects the UI into the page
+    onMessage?: onMessageType; // A function that handles messages from the injected Mantis
+    registerListeners?: registerListenersType; // A function that registers a listeners on the main page that can send messages to the injected Mantis
 }
 
 // This is what is stored in chrome local storage

@@ -1,14 +1,14 @@
-import type { MantisConnection, injectUIType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import googleIcon from "../../../assets/google.png";
-import { registerAuthCookies, reqSpaceCreation } from "../../driver";
+import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     // Extract k param from the URL
@@ -62,13 +62,13 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
 
     const spaceId = spaceData.space_id;
 
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress (GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     const menu = document.querySelector("#hdtb-sc > div > div > div.crJ18e").children[0];
 
     // Container for everything
@@ -96,23 +96,7 @@ const injectUI = async (space_id: string) => {
 
     await registerAuthCookies();
 
-    const scale = 0.75;
-
-    // Create the iframe, hidden by default
-    const iframeScalerParent = document.createElement("div");
-    iframeScalerParent.style.width = "100%";
-    iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.display = "none";
-    iframeScalerParent.style.border = "none";
-
-    const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
-    iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
-    iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
-    iframe.style.overflow = "hidden";
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
       
     // Toggle behavior
     checkbox.addEventListener("change", () => {
@@ -131,7 +115,6 @@ const injectUI = async (space_id: string) => {
     label.appendChild(checkbox);
     div.appendChild(label);
 
-    iframeScalerParent.appendChild(iframe);
     document.querySelector("#appbar > div > div:nth-child(2)").prepend(iframeScalerParent);
 
     // Insert into the menu

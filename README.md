@@ -74,6 +74,7 @@ interface MantisConnection {
         createdWidget: HTMLElement;
     }>;
     injectUI: (space_id: string) => Promise<HTMLElement>;
+    onMessage?: (messageType: string, messagePayload: any) => void;
 }
 ```
 
@@ -188,6 +189,15 @@ createSpace(injectUI: injectUIType, setProgress: setProgressType): Promise<{
 
 // Inject UI for existing space
 injectUI(space_id: string): Promise<HTMLElement>
+
+// Recieves messages from the Mantis space, allows for interaction with Mantis
+onMessage?.(messageType: string, messagePayload: any): void
+
+// Exists as a type, but isn't implemented yet
+// this will allow to create listeners
+// than can message into the Mantis website
+// (onMessage, but backwards)
+registerListeners?.((sendMessage: (command: string, args: any[]): void): void);
 ```
 
 ## Contributing
