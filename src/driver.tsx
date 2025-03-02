@@ -4,9 +4,10 @@ import { WikipediaReferencesConnection } from "./connections/wikipediaReferences
 import { PubmedConnection } from "./connections/pubmed/connection";
 import { GoogleDocsConnection } from "./connections/googleDocs/connection";
 import { GoogleScholarConnection } from "./connections/googleScholar/connection";
-import type { onMessageType } from "./connections/types";
+import type { onMessageType, sendMessageType } from "./connections/types";
+import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
 
-const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
+const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
 
 let COOKIE: string = "";
 
@@ -37,7 +38,7 @@ export const searchConnections = (url: string, ) => {
     return connections;
 };
 
-export const getSpacePortal = async (space_id: string, onMessage: onMessageType) => {
+export const getSpacePortal = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
     const scale = 0.75;
 
     // Generate uuidv4 using the browser's crypto API

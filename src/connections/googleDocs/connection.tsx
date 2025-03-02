@@ -1,5 +1,5 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, onMessageType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, sendMessageType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 import { simple as walk } from "acorn-walk";
 import escodegen from "escodegen";
@@ -14,7 +14,7 @@ const trigger = (url: string) => {
     return url.includes("docs.google.com/document/d");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: sendMessageType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     let extractedData: any[] = [];
@@ -118,16 +118,16 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     setProgress(GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
-    const createdWidget = await injectUI(spaceId, onMessage);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress(GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string, onMessage: onMessageType) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
     await registerAuthCookies();
 
-    const iframeScalerParent = await getSpacePortal (space_id, onMessage);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
 
     document.querySelector("#docs-editor-container").prepend (iframeScalerParent);
 

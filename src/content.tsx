@@ -95,7 +95,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         };
 
         try {
-            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI, setProgress, connection.onMessage || (() => {}));
+            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI, setProgress, connection.onMessage || ((_,__) => {}), connection.registerListeners || ((_) => {}));
 
             sanitizeWidget(createdWidget, connection);
             setSpaceId(_spaceId);
@@ -332,7 +332,7 @@ const PlasmoFloatingButton = () => {
                     continue;
                 }
 
-                const createdWidget = await connection.injectUI(space.id, connection.onMessage || (() => {}));
+                const createdWidget = await connection.injectUI(space.id, connection.onMessage || ((_,__) => {}), connection.registerListeners || ((_) => {}));
 
                 sanitizeWidget(createdWidget, connection);
             }

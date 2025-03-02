@@ -1,5 +1,5 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, onMessageType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, sendMessageType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import pubmedIcon from "../../../assets/pubmed.png";
@@ -30,7 +30,7 @@ const trigger = (url: string) => {
     return url.includes("pubmed.ncbi.nlm.nih.gov/?term");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: sendMessageType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const currentUrl = new URL(window.location.href);
@@ -182,17 +182,17 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     setProgress(GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
-    const createdWidget = await injectUI(spaceId, onMessage);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress(GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
 
-const injectUI = async (space_id: string, onMessage: onMessageType) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
     await registerAuthCookies();
 
-    const iframeScalerParent = await getSpacePortal (space_id, onMessage);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
 
     document.querySelector("main > div[class='inner-wrap']").prepend(iframeScalerParent);
 

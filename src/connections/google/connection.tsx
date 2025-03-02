@@ -1,4 +1,4 @@
-import type { MantisConnection, injectUIType, onMessageType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, sendMessageType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import googleIcon from "../../../assets/google.png";
@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: sendMessageType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     // Extract k param from the URL
@@ -62,13 +62,13 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
     const spaceId = spaceData.space_id;
 
-    const createdWidget = await injectUI(spaceId, onMessage);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress (GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string, onMessage: onMessageType) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
     const menu = document.querySelector("#hdtb-sc > div > div > div.crJ18e").children[0];
 
     // Container for everything
@@ -96,7 +96,7 @@ const injectUI = async (space_id: string, onMessage: onMessageType) => {
 
     await registerAuthCookies();
 
-    const iframeScalerParent = await getSpacePortal (space_id, onMessage);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
       
     // Toggle behavior
     checkbox.addEventListener("change", () => {
