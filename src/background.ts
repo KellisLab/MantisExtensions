@@ -44,23 +44,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const communications = {};
 
 // This is used to register communication channels between the background script and the injected Mantis
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action === "registerCommunication") {
         const uuid = request.uuid;
 
-        communications[uuid] = request.onMessage;
-
+        communications[uuid] = _sender.tab.id;
+        
+        sendResponse({ success: true });
         return true;
     }
 });
 
-// Receive messages from the injected Mantis
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// Gets a proxied message from the content script and forwards it to the appropriate tab
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action === "mantis_msg") {
         const uuid = request.uuid;
+        const tabId = communications[uuid];
+        
+        if (tabId) {
+            // Forward the message to the content script in the appropriate tab
+            chrome.tabs.sendMessage(tabId, {
+                action: "forward_mantis_msg",
+                uuid: uuid,
+                messageType: request.messageType,
+                messagePayload: request.messagePayload
+            }, response => {
+                sendResponse(response);
+            });
 
-        if (communications[uuid]) {
-            communications[uuid](request.messageType, request.messagePayload);
+            return true;
+        } else {
+            sendResponse({ success: false });
+            return true;
         }
     }
 });

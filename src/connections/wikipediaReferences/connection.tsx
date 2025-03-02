@@ -76,8 +76,22 @@ const injectUI = async (space_id: string, onMessage: onMessageType) => {
 }
 
 const onMessage = async (messageType, messagePayload) => {
-    console.log ("Got message", messageType);
-    console.log (messagePayload);
+    if (messageType == "select") {
+        const pointTitle = messagePayload.point.metadata.values.title;
+
+        const references = document.querySelectorAll<HTMLAnchorElement>("p > a[title][href]");
+        const matchingReference = Array.from (references).find(ref => ref.title === pointTitle);
+
+        if (matchingReference) {
+            // Scroll to the matching reference
+            matchingReference.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            matchingReference.style.backgroundColor = 'yellow';
+
+            setTimeout(() => {
+                matchingReference.style.backgroundColor = '';
+            }, 3000);
+        }
+    }
 };
 
 export const WikipediaReferencesConnection: MantisConnection = {

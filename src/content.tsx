@@ -9,7 +9,8 @@ import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
 
 export const config: PlasmoCSConfig = {
-    matches: ["<all_urls>"] 
+    matches: ["<all_urls>"],
+    all_frames: true,
 };
 
 // Plasmo code for using tailwindcss in the page
@@ -295,6 +296,23 @@ const PlasmoFloatingButton = () => {
     useEffect(() => {
         // Search for which connections are active on the current URL
         setActiveConnections(searchConnections(window.location.href));
+
+        // NOTE: This window code is only used when on a mantis page that was
+        // injected by a connection. Its purpose is because the mantis page
+        // doesn't have access to chrome APIs, so it just uses a builtin
+        // postMessage, and then we intercept that and forward it using
+        // the chrome API
+        window.addEventListener("message", async (event) => {
+            if (event.source !== window) return;
+        
+            const message = event.data;
+            
+            // Check that the message is intended for the extension
+            // and forward the message to background.ts
+            if (message.action === "mantis_msg") {
+                await chrome.runtime.sendMessage(message);
+            }
+        });
     }, []);
 
     useEffect(() => {
