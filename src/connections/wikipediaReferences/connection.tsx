@@ -45,9 +45,11 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         }
     }
 
+    const filteredData = extractedData.filter((data) => data.text.length > 0);
+
     setProgress(GenerationProgress.CREATING_SPACE);
 
-    const spaceData = await reqSpaceCreation(extractedData, {
+    const spaceData = await reqSpaceCreation(filteredData, {
         "title": "title",
         "link": "links",
         "__mantis_href": "links",
@@ -75,6 +77,7 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
     return iframeScalerParent;
 }
 
+// Receives messages from within Mantis
 const onMessage = async (messageType, messagePayload) => {
     if (messageType == "select") {
         const pointTitle = messagePayload.point.metadata.values.title;

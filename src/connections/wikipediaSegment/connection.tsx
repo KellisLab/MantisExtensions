@@ -101,49 +101,42 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
     return { spaceId, createdWidget };
 }
-
-// Helper function to generate smart titles from segment content
+// Helper function to generate descriptive titles from segment content
 function generateSmartTitle(segment: string): string {
-    // Clean the segment text
     const text = segment.trim();
     
     if (text.length === 0) return "Empty Segment";
     
-    // Try to extract the first sentence or part of it
     let title = "";
     
-    // Look for the first sentence (ending with period, question mark, or exclamation)
+    // Extract first sentence or first part of text
     const firstSentenceMatch = text.match(/^([^.!?]+[.!?])/);
     if (firstSentenceMatch) {
         title = firstSentenceMatch[1].trim();
     } else {
-        // If no sentence punctuation, take the first part
         title = text.split("\n")[0].trim();
     }
     
-    // Limit length and remove reference brackets common in Wikipedia
+    // Clean and format the title
     title = title.replace(/\[\d+\]/g, "").trim();
     
-    // If title is too long, truncate it
+    // Handle title length
     if (title.length > 60) {
-        // Try to find a natural break point
         const breakPoint = title.lastIndexOf(" ", 57);
-        if (breakPoint > 20) {
-            title = title.substring(0, breakPoint) + "...";
-        } else {
-            title = title.substring(0, 57) + "...";
-        }
+        title = breakPoint > 20 
+            ? title.substring(0, breakPoint) + "..." 
+            : title.substring(0, 57) + "...";
     }
     
-    // If title is too short or empty, use fallback
+    // Generate fallback title if necessary
     if (title.length < 3) {
-        // Extract keywords or use generic title
         const words = text.split(/\s+/).filter(word => word.length > 4).slice(0, 3);
-        if (words.length > 0) {
-            title = words.join(" ");
-            if (title.length > 60) title = title.substring(0, 57) + "...";
-        } else {
-            title = "Section Content";
+        title = words.length > 0 
+            ? words.join(" ").substring(0, 60) 
+            : "Section Content";
+        
+        if (title.length > 60) {
+            title = title.substring(0, 57) + "...";
         }
     }
     
@@ -161,13 +154,12 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
 }
 
 const onMessage = async (messageType: string, messagePayload: any) => {
+    // On point select
     if (messageType === "select") {
         const paragraphIdx = messagePayload.point.metadata.values.paragraph_idx;
         const paragraphs = document.querySelectorAll('#mw-content-text .mw-parser-output > p');
         
         if (paragraphs.length > 0) {
-            // Use the index to approximate which paragraph to highlight
-            // This is a simplification since our segments don't directly match paragraphs
             const paragraph = paragraphs[paragraphIdx] as HTMLElement;
             const prevColor = paragraph.style.backgroundColor;
             
@@ -180,6 +172,7 @@ const onMessage = async (messageType: string, messagePayload: any) => {
         }
     }
 
+    // On point load
     if (messageType == "add_point") {
         const paragraphIdx = messagePayload.point.metadata.values.paragraph_idx;
         const clusterColor = messagePayload.cluster.color;
@@ -210,5 +203,4 @@ export const WikipediaSegmentConnection: MantisConnection = {
     createSpace: createSpace,
     onMessage: onMessage,
     injectUI: injectUI,
-    registerListeners: registerListeners,
 }
