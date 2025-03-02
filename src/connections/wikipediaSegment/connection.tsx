@@ -1,4 +1,4 @@
-import type { MantisConnection, injectUIType, onMessageType, sendMessageType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 import { median } from "d3-array";
 import wikiIcon from "../../../assets/wiki.png";
@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("en.wikipedia.org/wiki");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: sendMessageType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     let extractedData: any[] = [];
@@ -150,7 +150,7 @@ function generateSmartTitle(segment: string): string {
     return title;
 }
 
-const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     await registerAuthCookies();
 
     const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);

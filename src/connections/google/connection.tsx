@@ -1,4 +1,4 @@
-import type { MantisConnection, injectUIType, onMessageType, sendMessageType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
 import { GenerationProgress } from "../types";
 
 import googleIcon from "../../../assets/google.png";
@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: sendMessageType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     // Extract k param from the URL
@@ -68,7 +68,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: sendMessageType) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     const menu = document.querySelector("#hdtb-sc > div > div > div.crJ18e").children[0];
 
     // Container for everything
