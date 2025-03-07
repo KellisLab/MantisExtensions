@@ -128,6 +128,7 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
     return await new Promise<{ space_id: string, error: string, stacktrace: string }> ((resolve, reject) => {
         const job = getUuidV4();    
 
+        // Main create space driver, makes initial request
         fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
             method: 'POST',
             headers: {
@@ -140,7 +141,7 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
                 name: name,
                 job: job
             })
-        }).then (async (spaceDataResponse) => {
+        }).then (async (spaceDataResponse) => { // <- if request succeeds then resolve creation
             if (!spaceDataResponse.ok) {
                 throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
             }
@@ -148,11 +149,12 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
             resolve(await spaceDataResponse.json());
         }).catch (reject);
 
-        // Poll for space ID
+        // Poll for the space ID continuously
+        // this is in order to instantiate a logging socket 
         const checkSpaceId = async () => {
             return new Promise(async (spaceIDResolve, spaceIDReject) => {
                 try {
-                    console.log ("Polling");
+                    // Probe backend, resolve if found
                     const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
                     if (response.ok) {
                         const data = await response.json();
@@ -170,6 +172,7 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
             });
         };
 
+        // Start logging sequence, this will establish a socket connection to the space
         checkSpaceId().then ((spaceID) => establishLogSocket (spaceID));
     });
 }
