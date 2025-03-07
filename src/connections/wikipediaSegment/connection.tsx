@@ -1,4 +1,4 @@
-import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 import { median } from "d3-array";
 import wikiIcon from "../../../assets/wiki.png";
@@ -8,7 +8,7 @@ const trigger = (url: string) => {
     return url.includes("en.wikipedia.org/wiki");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     let extractedData: any[] = [];
@@ -90,7 +90,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         "idx": "numeric",
         "segment": "semantic",
         "paragraph_idx": "numeric"
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 

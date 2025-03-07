@@ -42,7 +42,7 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
     const scale = 0.75;
 
     // Generate uuidv4 using the browser's crypto API
-    const uuidv4 = crypto.randomUUID();
+    const uuidv4 = getUuidV4 ();
 
     // Lets the background script know that WE are the ones communicating with this mantis space
     await chrome.runtime.sendMessage({
@@ -124,25 +124,54 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
     return iframeScalerParent;
 };
 
-export const reqSpaceCreation = async (data: any, data_types: any, name: string | null = null)  => {
-    const spaceDataResponse = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            data: data,
-            cookie: COOKIE,
-            data_types: data_types,
-            name: name,
-        })
+export const reqSpaceCreation = async (data: any, data_types: any, establishLogSocket: (string) => void, name: string | null = null)  => {
+    return await new Promise<{ space_id: string, error: string, stacktrace: string }> ((resolve, reject) => {
+        const job = getUuidV4();    
+
+        fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: data,
+                cookie: COOKIE,
+                data_types: data_types,
+                name: name,
+                job: job
+            })
+        }).then (async (spaceDataResponse) => {
+            if (!spaceDataResponse.ok) {
+                throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
+            }
+
+            resolve(await spaceDataResponse.json());
+        }).catch (reject);
+
+        // Poll for space ID
+        const checkSpaceId = async () => {
+            return new Promise(async (spaceIDResolve, spaceIDReject) => {
+                try {
+                    console.log ("Polling");
+                    const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.space_id) {
+                            console.log ("Resolved " + data.space_id);
+
+                            spaceIDResolve(data.space_id);
+                            return;
+                        }
+                    }
+                    setTimeout(checkSpaceId, 500);
+                } catch (error) {
+                    setTimeout(checkSpaceId, 500);
+                }
+            });
+        };
+
+        checkSpaceId().then ((spaceID) => establishLogSocket (spaceID));
     });
-
-    if (!spaceDataResponse.ok) {
-        throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
-    }
-
-    return await spaceDataResponse.json();
 }
 
 export const registerAuthCookies = async () => {
@@ -168,4 +197,8 @@ export const registerAuthCookies = async () => {
             sameSite: "no_restriction"
         });
     }
+}
+
+export const getUuidV4 = () => {
+    return crypto.randomUUID();
 }

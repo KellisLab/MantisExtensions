@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import faviconIco from "../assets/icon.png";
 import { searchConnections } from "./driver";
-import type { MantisConnection, setProgressType, StoredSpace } from "./connections/types";
+import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
 
@@ -85,6 +85,79 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
     const [noteText, setNoteText] = useState<string | null>(null);
     const [save, setSave] = useState(false); // Whether the space has been saved
     const [connectionIdx, setConnectionIdx] = useState(0); // Index of the active connection, there can be multiple
+    const [WSStatus, setWSStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+    const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
+
+    const establishLogSocket = (space_id: string) => {        
+        const backendApiUrl = new URL(process.env.PLASMO_PUBLIC_MANTIS_API);
+        const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
+        const baseWsUrl = isLocalhost
+            ? process.env.PLASMO_PUBLIC_MANTIS_API.replace('http://', 'ws://').replace('https://', 'ws://')
+            : process.env.PLASMO_PUBLIC_MANTIS_API.replace('https://', 'wss://');
+
+        const socketUrl = `${baseWsUrl}/ws/synthesis_progress/${space_id}/`;
+        let reconnectTimer: NodeJS.Timeout;
+
+        const connectWebSocket = () => {
+            setWSStatus('connecting');
+            const ws = new WebSocket(socketUrl);
+
+            ws.onopen = () => {
+                setWSStatus('connected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: 'Connected to log stream',
+                    level: 'INFO',
+                    timestamp: new Date().toISOString(),
+                }]);
+            };
+
+            ws.onmessage = (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'log' || data.log) {
+                        const logMsg: LogMessage = {
+                            type: data.type || 'log',
+                            message: data.message || data.log,
+                            level: data.level || 'INFO',
+                            timestamp: data.timestamp || new Date().toISOString(),
+                            logger: data.logger,
+                        };
+                        setLogMessages(prev => [...prev, logMsg]);
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                setWSStatus('disconnected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: 'WebSocket error occurred',
+                    level: 'ERROR',
+                    timestamp: new Date().toISOString(),
+                }]);
+            };
+
+            ws.onclose = (event) => {
+                setWSStatus('disconnected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: `Connection closed: ${event.reason || 'Unknown reason'} (code: ${event.code})`,
+                    level: 'WARNING',
+                    timestamp: new Date().toISOString(),
+                }]);
+
+                // Attempt to reconnect after 5 seconds
+                reconnectTimer = setTimeout(connectWebSocket, 5000);
+            };
+
+            return ws;
+        };
+
+        connectWebSocket();
+    }
 
     // When the connection is run
     const runConnection = async (connection: MantisConnection) => {
@@ -95,7 +168,11 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         };
 
         try {
-            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI, setProgress, connection.onMessage || ((_,__) => {}), connection.registerListeners || ((_) => {}));
+            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI, 
+                                                                                      setProgress, 
+                                                                                      connection.onMessage || ((_,__) => {}), 
+                                                                                      connection.registerListeners || ((_) => {}),
+                                                                                      establishLogSocket);
 
             sanitizeWidget(createdWidget, connection);
             setSpaceId(_spaceId);
@@ -222,14 +299,55 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         return (
             <DialogHeader>
                 {connectionData}
-                <div className="flex flex-col items-center space-y-2">
-                    <div className="w-full bg-gray-300 rounded-full h-4">
-                        <div
-                            className="bg-blue-500 h-4 rounded-full transition-all duration-500 animate-pulse"
-                            style={{ width: `${progressPercent * 100}%` }}
-                        />
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="w-full">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                            <span className="text-xs font-medium text-blue-600">{state}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                                className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
+                                style={{ width: `${progressPercent * 100}%` }}
+                            />
+                        </div>
                     </div>
-                    <span className="text-sm font-medium text-blue-600">{state}</span>
+                    
+                    <div className="w-full mt-4 border rounded-lg overflow-hidden">
+                        <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b">
+                            <span className="font-medium">Log Messages</span>
+                            <div className="flex items-center">
+                                <span className={`w-2 h-2 rounded-full mr-2 ${
+                                    WSStatus === 'connected' ? 'bg-green-500' : 
+                                    WSStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}></span>
+                                <span className="text-xs text-gray-500">{WSStatus}</span>
+                            </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto p-3 bg-gray-50 font-mono text-sm">
+                            {logMessages.length === 0 ? (
+                                <div className="text-center text-gray-400 py-2">No log messages yet</div>
+                            ) : (
+                                logMessages.map((log, i) => (
+                                    <div 
+                                        key={i} 
+                                        className={`mb-1 pl-2 border-l-2 ${
+                                            log.level === 'ERROR' ? 'border-red-500 text-red-800' : 
+                                            log.level === 'WARNING' ? 'border-yellow-500 text-yellow-800' : 
+                                            'border-blue-500 text-gray-800'
+                                        }`}
+                                    >
+                                        <div className="flex items-start">
+                                            <span className="text-xs text-gray-500 mr-2">
+                                                {new Date(log.timestamp || '').toLocaleTimeString()}
+                                            </span>
+                                            <span>{log.message}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
                 </div>
             </DialogHeader>
         );
