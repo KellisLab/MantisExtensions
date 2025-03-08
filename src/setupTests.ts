@@ -8,6 +8,12 @@ global.chrome = {
       addListener: jest.fn()
     },
     lastError: null
+  },
+  storage: {
+    local: {
+        get: jest.fn().mockImplementation(key => Promise.resolve({ [key]: [] })),
+        set: jest.fn()
+    }
   }
 } as any;
 

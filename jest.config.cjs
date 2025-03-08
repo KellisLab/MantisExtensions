@@ -1,5 +1,5 @@
 /** @type {import('jest').Config} */
-const config = {
+module.exports = {
   preset: 'ts-jest/presets/js-with-ts-esm',
   testEnvironment: 'jsdom',
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
@@ -9,19 +9,15 @@ const config = {
     "\\.(gif|ttf|eot|svg|png)$": "<rootDir>/__mocks__/file.mock.js"
   },
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", {
-      useESM: true,
-    }],
-    "^.+\\.jsx?$": ["babel-jest", { 
+    "^.+\\.(jsx|tsx|ts|js)?$": ["babel-jest", { 
       presets: [
         ['@babel/preset-env', { targets: { node: 'current' } }],
         '@babel/preset-react',
+        '@babel/preset-typescript'
       ]
     }]
   },
   transformIgnorePatterns: [],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts']
 };
-
-export default config;

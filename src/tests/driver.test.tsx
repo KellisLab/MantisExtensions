@@ -1,5 +1,3 @@
-import { render } from "@testing-library/react";
-import type { MantisConnection } from "../connections/types";
 import { CONNECTIONS } from "../driver";
 import { expect, test } from '@jest/globals';
 
