@@ -1,8 +1,8 @@
 import cssText from "data-text:~style.css";
 import type { PlasmoCSConfig } from "plasmo";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-import faviconIco from "../assets/icon.png";
+import faviconIco from "data-base64:../assets/icon.png";
 import { searchConnections } from "./driver";
 import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";

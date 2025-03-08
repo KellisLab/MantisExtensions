@@ -19,9 +19,7 @@ const config = {
       ]
     }]
   },
-  transformIgnorePatterns: [
-    "node_modules/(?!(internmap|d3-array|escodegen|acorn-walk)/)"
-  ],
+  transformIgnorePatterns: [],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
 };
