@@ -2,7 +2,7 @@ import { create } from "domain";
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import pubmedIcon from "../../../assets/pubmed.png";
+import pubmedIcon from "data-base64:../../../assets/pubmed.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 interface PubMedAuthor {

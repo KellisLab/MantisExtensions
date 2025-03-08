@@ -1,7 +1,7 @@
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import googleIcon from "../../../assets/google.png";
+import googleIcon from "data-base64:../../../assets/google.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {

@@ -2,7 +2,7 @@ import { create } from "domain";
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import wikiIcon from "../../../assets/wiki.png";
+import wikiIcon from "data-base64:../../../assets/wiki.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {

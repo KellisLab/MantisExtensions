@@ -4,7 +4,7 @@ import { GenerationProgress } from "../types";
 import { simple as walk } from "acorn-walk";
 import escodegen from "escodegen";
 
-import docsIcon from "../../../assets/docs.png";
+import docsIcon from "data-base64:../../../assets/docs.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const acorn = require("acorn"); // This package only works with old require

@@ -7,7 +7,7 @@ import { GoogleScholarConnection } from "./connections/googleScholar/connection"
 import type { onMessageType, registerListenersType } from "./connections/types";
 import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
 
-const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
+export const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
 
 let COOKIE: string = "";
 
@@ -125,7 +125,7 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
 };
 
 export const reqSpaceCreation = async (data: any, data_types: any, establishLogSocket: (string) => void, name: string | null = null)  => {
-    return await new Promise<{ space_id: string, error: string, stacktrace: string }> ((resolve, reject) => {
+    return await new Promise<{ space_id: string, error: string, stacktrace: string }> (async (resolve, reject) => {
         const job = getUuidV4();    
 
         // Main create space driver, makes initial request
@@ -152,28 +152,27 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
         // Poll for the space ID continuously
         // this is in order to instantiate a logging socket 
         const checkSpaceId = async () => {
-            return new Promise(async (spaceIDResolve, spaceIDReject) => {
-                try {
-                    // Probe backend, resolve if found
-                    const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.space_id) {
-                            console.log ("Resolved " + data.space_id);
-
-                            spaceIDResolve(data.space_id);
-                            return;
-                        }
+            try {
+                // Probe backend, resolve if found
+                const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.space_id) {
+                        return data.space_id;
                     }
-                    setTimeout(checkSpaceId, 500);
-                } catch (error) {
-                    setTimeout(checkSpaceId, 500);
                 }
-            });
+
+                await new Promise(r => setTimeout(r, 500));
+                return checkSpaceId(); // Recursive call
+            } catch (error) {
+                await new Promise(r => setTimeout(r, 500));
+                return checkSpaceId(); // Recursive call
+            }
         };
 
         // Start logging sequence, this will establish a socket connection to the space
-        checkSpaceId().then ((spaceID) => establishLogSocket (spaceID));
+        const spaceId = await checkSpaceId();
+        establishLogSocket(spaceId);
     });
 }
 
