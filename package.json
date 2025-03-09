@@ -35,9 +35,7 @@
     "permissions": [
       "storage",
       "cookies",
-      "webRequest",
-      "https://*/*",
-      "http://*/*"
+      "webRequest"
     ],
     "host_permissions": [
       "https://*/*",

@@ -15,7 +15,7 @@ const octokit = new Octokit({
     auth: process.env.PLASMO_PUBLIC_GITHUB_AUTH
 });
 
-const injectUI = async (space_id: string) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     const scale = 0.75;
 
     const iframeScalerParent = document.createElement("div");
@@ -46,8 +46,7 @@ const injectUI = async (space_id: string) => {
 
     return iframeScalerParent;
 };
-
-const createSpace = async (injectUI: any, setProgress: any) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const currentUrl = new URL(window.location.href);
