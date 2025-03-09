@@ -52,7 +52,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     const currentUrl = new URL(window.location.href);
     const repoPath = currentUrl.pathname.slice(1);
     const [owner, repo] = repoPath.split('/');
-    console.log(owner, repo);
 
     if (!owner || !repo) {
         throw new Error("Invalid GitHub repository URL");
@@ -85,17 +84,17 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         const link = data.html_url;
         let diff = "Diff unavailable";
 
-        // try {
-        //     const diffResponse = await octokit.request(`GET /repos/${owner}/${repo}/commits/${commitSha}`, {
-        //         owner: owner,
-        //         repo: repo,
-        //         ref: commitSha,
-        //         headers: { accept: 'application/vnd.github.v3.diff' }
-        //     });
-        //     diff = diffResponse.data as string;
-        // } catch (e) {
-        //     diff = "Diff unavailable";
-        // }
+        try {
+            const diffResponse = await octokit.request(`GET /repos/${owner}/${repo}/commits/${commitSha}`, {
+                owner: owner,
+                repo: repo,
+                ref: commitSha,
+                headers: { accept: 'application/vnd.github.v3.diff' }
+            });
+            diff = diffResponse.data as string;
+        } catch (e) {
+            diff = "Diff unavailable";
+        }
 
         commits.push({ message, author, date, link, diff });
     }
@@ -131,7 +130,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         },
         repo
     );
-    console.log(spaceData);
 
     setProgress(GenerationProgress.INJECTING_UI);
 
