@@ -1,10 +1,10 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 import { simple as walk } from "acorn-walk";
 import escodegen from "escodegen";
 
-import docsIcon from "../../../assets/docs.png";
+import docsIcon from "data-base64:../../../assets/docs.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const acorn = require("acorn"); // This package only works with old require
@@ -14,7 +14,7 @@ const trigger = (url: string) => {
     return url.includes("docs.google.com/document/d");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     let extractedData: any[] = [];
@@ -113,7 +113,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         "title": "title",
         "idx": "numeric",
         "segment": "semantic"
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 

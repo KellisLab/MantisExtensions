@@ -1,8 +1,8 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import pubmedIcon from "../../../assets/pubmed.png";
+import pubmedIcon from "data-base64:../../../assets/pubmed.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 interface PubMedAuthor {
@@ -30,7 +30,7 @@ const trigger = (url: string) => {
     return url.includes("pubmed.ncbi.nlm.nih.gov/?term");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const currentUrl = new URL(window.location.href);
@@ -177,7 +177,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         "abstract": "semantic",
         "pmid": "categoric",
         "authors": "categoric"
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 

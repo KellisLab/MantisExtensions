@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
-    "package": "plasmo package"
+    "package": "plasmo package",
+    "prepare": "husky",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "acorn": "^8.14.0",
@@ -20,15 +22,32 @@
     "tailwindcss": "3.4.1"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-react": "^7.26.3",
+    "@babel/preset-typescript": "^7.26.0",
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/chrome": "0.0.258",
+    "@types/jest": "^29.5.14",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
     "autoprefixer": "^10.4.20",
+    "babel-jest": "^29.7.0",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsdom": "^26.0.0",
+    "lint-staged": "^15.4.3",
     "postcss": "8.4.33",
     "prettier": "3.2.4",
-    "typescript": "5.3.3"
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "typescript": "5.3.3",
+    "vitest": "^3.0.8"
   },
   "manifest": {
     "permissions": [
@@ -40,5 +59,6 @@
       "https://*/*",
       "http://*/*"
     ]
-  }
+  },
+  "type": "module"
 }

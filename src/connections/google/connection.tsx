@@ -1,14 +1,14 @@
-import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import googleIcon from "../../../assets/google.png";
+import googleIcon from "data-base64:../../../assets/google.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress (GenerationProgress.GATHERING_DATA);
 
     // Extract k param from the URL
@@ -56,7 +56,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         "semantic_title": "semantic",
         "link": "links",
         "snippet": "semantic"
-    }, query);
+    }, establishLogSocket, query);
 
     setProgress (GenerationProgress.INJECTING_UI);
 
