@@ -1,15 +1,15 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import wikiIcon from "../../../assets/wiki.png";
+import wikiIcon from "data-base64:../../../assets/wiki.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
     return url.includes("en.wikipedia.org/wiki");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const references = document.querySelectorAll<HTMLAnchorElement>("p > a[title][href]");
@@ -54,7 +54,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         "link": "links",
         "__mantis_href": "links",
         "text": "semantic",
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 

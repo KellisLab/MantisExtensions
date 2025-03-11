@@ -8,7 +8,7 @@ import { GoogleScholarConnection } from "./connections/googleScholar/connection"
 import type { onMessageType, registerListenersType } from "./connections/types";
 import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
 
-const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection, GitHubConnection];
+export const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection, GitHubConnection];
 
 let COOKIE: string = "";
 
@@ -43,7 +43,7 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
     const scale = 0.75;
 
     // Generate uuidv4 using the browser's crypto API
-    const uuidv4 = crypto.randomUUID();
+    const uuidv4 = getUuidV4 ();
 
     // Lets the background script know that WE are the ones communicating with this mantis space
     await chrome.runtime.sendMessage({
@@ -125,25 +125,56 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
     return iframeScalerParent;
 };
 
-export const reqSpaceCreation = async (data: any, data_types: any, name: string | null = null)  => {
-    const spaceDataResponse = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            data: data,
-            cookie: COOKIE,
-            data_types: data_types,
-            name: name,
-        })
+export const reqSpaceCreation = async (data: any, data_types: any, establishLogSocket: (string) => void, name: string | null = null)  => {
+    return await new Promise<{ space_id: string, error: string, stacktrace: string }> (async (resolve, reject) => {
+        const job = getUuidV4();    
+
+        // Main create space driver, makes initial request
+        fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                data: data,
+                cookie: COOKIE,
+                data_types: data_types,
+                name: name,
+                job: job
+            })
+        }).then (async (spaceDataResponse) => { // <- if request succeeds then resolve creation
+            if (!spaceDataResponse.ok) {
+                throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
+            }
+
+            resolve(await spaceDataResponse.json());
+        }).catch (reject);
+
+        // Poll for the space ID continuously
+        // this is in order to instantiate a logging socket 
+        const checkSpaceId = async () => {
+            try {
+                // Probe backend, resolve if found
+                const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.space_id) {
+                        return data.space_id;
+                    }
+                }
+
+                await new Promise(r => setTimeout(r, 500));
+                return checkSpaceId(); // Recursive call
+            } catch (error) {
+                await new Promise(r => setTimeout(r, 500));
+                return checkSpaceId(); // Recursive call
+            }
+        };
+
+        // Start logging sequence, this will establish a socket connection to the space
+        const spaceId = await checkSpaceId();
+        establishLogSocket(spaceId);
     });
-
-    if (!spaceDataResponse.ok) {
-        throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
-    }
-
-    return await spaceDataResponse.json();
 }
 
 export const registerAuthCookies = async () => {
@@ -169,4 +200,7 @@ export const registerAuthCookies = async () => {
             sameSite: "no_restriction"
         });
     }
+}
+export const getUuidV4 = () => {
+    return crypto.randomUUID();
 }
