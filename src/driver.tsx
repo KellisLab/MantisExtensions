@@ -1,13 +1,4 @@
-import { url } from "inspector";
-import { GoogleConnection } from "./connections/google/connection";
-import { WikipediaReferencesConnection } from "./connections/wikipediaReferences/connection";
-import { PubmedConnection } from "./connections/pubmed/connection";
-import { GoogleDocsConnection } from "./connections/googleDocs/connection";
-import { GoogleScholarConnection } from "./connections/googleScholar/connection";
 import type { onMessageType, registerListenersType } from "./connections/types";
-import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
-
-export const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
 
 let COOKIE: string = "";
 
@@ -31,12 +22,6 @@ const refetchAuthCookies = async () => {
 };
 
 refetchAuthCookies ();
-
-export const searchConnections = (url: string, ) => {
-    const connections = CONNECTIONS.filter(connection => connection.trigger(url));
-
-    return connections;
-};
 
 export const getSpacePortal = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     const scale = 0.75;
