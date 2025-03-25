@@ -80,7 +80,7 @@ window.mantisObserver = window.mantisObserver || null;
 /*       Gmail OAuth Logic       */
 /* ============================= */
 
-const CLIENT_ID = "822740168141-bl6ltpse35np562ojk02vkk9ql47njr4.apps.googleusercontent.com";
+const CLIENT_ID = "441686323709-vvnd0nr3089o8198dknhem7hvmvv0noe.apps.googleusercontent.com";
 const REDIRECT_URI = `${process.env.PLASMO_PUBLIC_FRONTEND}/Integrations/`;
 
 const authenticateGmail = (): Promise<string> => {
