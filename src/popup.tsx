@@ -1,4 +1,4 @@
-// import "./style.css";
+import "./style.css";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { type StoredSpace } from "./connections/types";

@@ -1,4 +1,5 @@
 import type { onMessageType, registerListenersType } from "./connections/types";
+import { fetchFromCelerySDK } from "./requests";
 
 let COOKIE: string = "";
 
@@ -15,6 +16,10 @@ const refetchAuthCookies = async () => {
                 .join("; ");
 
             console.log (COOKIE);
+
+            if (response.cookies.find ((cookie) => cookie.name === "sessionid") === undefined) {
+                throw new Error (`User is not authenticated with host: ${process.env.PLASMO_PUBLIC_FRONTEND}`);
+            }
 
             resolve();
         });
@@ -114,8 +119,9 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
         const job = getUuidV4();    
 
         // Main create space driver, makes initial request
-        fetch(`${process.env.PLASMO_PUBLIC_SDK}/create-space`, {
+        fetchFromCelerySDK(`/api/create-space`, `/api/space-task-status`, {
             method: 'POST',
+            credentials: 'omit',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -126,12 +132,8 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
                 name: name,
                 job: job
             })
-        }).then (async (spaceDataResponse) => { // <- if request succeeds then resolve creation
-            if (!spaceDataResponse.ok) {
-                throw new Error(`Failed to create create space: ${await spaceDataResponse.text()}`);
-            }
-
-            resolve(await spaceDataResponse.json());
+        }).then ((spaceDataResponse) => { // <- if request succeeds then resolve creation
+            resolve(spaceDataResponse);
         }).catch (reject);
 
         // Poll for the space ID continuously
@@ -139,11 +141,11 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
         const checkSpaceId = async () => {
             try {
                 // Probe backend, resolve if found
-                const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/get-space-id/${job}`);
+                const response = await fetch(`${process.env.PLASMO_PUBLIC_SDK}/api/get-space-id/${job}`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.space_id) {
-                        return data.space_id;
+                        return { spaceId: data.space_id, layerId: data.layer_id };
                     }
                 }
 
@@ -156,7 +158,7 @@ export const reqSpaceCreation = async (data: any, data_types: any, establishLogS
         };
 
         // Start logging sequence, this will establish a socket connection to the space
-        const spaceId = await checkSpaceId();
+        const { spaceId, layerId } = await checkSpaceId();
         establishLogSocket(spaceId);
     });
 }
