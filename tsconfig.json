@@ -6,14 +6,19 @@
   "include": [
     ".plasmo/index.d.ts",
     "./**/*.ts",
-    "./**/*.tsx"
-  ],
+    "./**/*.tsx"],
   "compilerOptions": {
     "paths": {
       "~*": [
         "./src/*"
       ]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "target": "es2017",
+    "module": "esnext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "verbatimModuleSyntax": false
   }
 }

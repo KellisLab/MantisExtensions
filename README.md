@@ -74,6 +74,7 @@ interface MantisConnection {
         createdWidget: HTMLElement;
     }>;
     injectUI: (space_id: string) => Promise<HTMLElement>;
+    onMessage?: (messageType: string, messagePayload: any) => void;
 }
 ```
 
@@ -142,6 +143,7 @@ const CONNECTIONS = [WikipediaReferencesConnection, GoogleConnection, ..., YourC
 The extension can be configured through `.env` or `.env.development`:
 
 * `PLASMO_PUBLIC_FRONTEND`: controls where the extension will embed the spaces to
+* `PLASMO_PUBLIC_MANTIS_API`: This is only used for space logging, and must be set to whatever backend that the PLASMO_PUBLIC_FRONTEND is using. This controls setting up websockets.
 * `PLASMO_PUBLIC_SDK`: The domain to use as the extension backend for managing/creating spaces
 
 Ensure that the `PLASMO_PUBLIC_FRONTEND` here point to the same domain that is being used in the Extension Backend. This is because this extension sends the cookie to the backend from the hostname of `PLASMO_PUBLIC_FRONTEND`. This cookie won't work if the backend uses a different domain as the frontend.
@@ -188,6 +190,15 @@ createSpace(injectUI: injectUIType, setProgress: setProgressType): Promise<{
 
 // Inject UI for existing space
 injectUI(space_id: string): Promise<HTMLElement>
+
+// Recieves messages from the Mantis space, allows for interaction with Mantis
+onMessage?.(messageType: string, messagePayload: any): void
+
+// Exists as a type, but isn't implemented yet
+// this will allow to create listeners
+// than can message into the Mantis website
+// (onMessage, but backwards)
+registerListeners?.((sendMessage: (command: string, args: any[]): void): void);
 ```
 
 ## Contributing

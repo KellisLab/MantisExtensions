@@ -1,15 +1,15 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
-import wikiIcon from "../../../assets/wiki.png";
-import { registerAuthCookies, reqSpaceCreation } from "../../driver";
+import wikiIcon from "data-base64:../../../assets/wiki.png";
+import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const trigger = (url: string) => {
     return url.includes("en.wikipedia.org/wiki");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const references = document.querySelectorAll<HTMLAnchorElement>("p > a[title][href]");
@@ -45,50 +45,57 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
         }
     }
 
+    const filteredData = extractedData.filter((data) => data.text.length > 0);
+
     setProgress(GenerationProgress.CREATING_SPACE);
 
-    const spaceData = await reqSpaceCreation(extractedData, {
+    const spaceData = await reqSpaceCreation(filteredData, {
         "title": "title",
         "link": "links",
         "__mantis_href": "links",
         "text": "semantic",
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
 
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress(GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string) => {
+
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     await registerAuthCookies();
 
-    const scale = 0.75;
-
-    // Create the iframe, hidden by default
-    const iframeScalerParent = document.createElement("div");
-    iframeScalerParent.style.width = "100%";
-    iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.border = "none";
-
-    const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
-    iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
-    iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
-    iframe.style.overflow = "hidden";
-    iframeScalerParent.appendChild(iframe);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
 
     document.querySelector("body > div.mw-page-container").prepend(iframeScalerParent);
 
     return iframeScalerParent;
 }
+
+// Receives messages from within Mantis
+const onMessage = async (messageType, messagePayload) => {
+    if (messageType == "select") {
+        const pointTitle = messagePayload.point.metadata.values.title;
+
+        const references = document.querySelectorAll<HTMLAnchorElement>("p > a[title][href]");
+        const matchingReference = Array.from (references).find(ref => ref.title === pointTitle);
+
+        if (matchingReference) {
+            // Scroll to the matching reference
+            matchingReference.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            matchingReference.style.backgroundColor = 'yellow';
+
+            setTimeout(() => {
+                matchingReference.style.backgroundColor = '';
+            }, 3000);
+        }
+    }
+};
 
 export const WikipediaReferencesConnection: MantisConnection = {
     name: "Wikipedia References",
@@ -96,5 +103,6 @@ export const WikipediaReferencesConnection: MantisConnection = {
     icon: wikiIcon,
     trigger: trigger,
     createSpace: createSpace,
+    onMessage: onMessage,
     injectUI: injectUI,
 }

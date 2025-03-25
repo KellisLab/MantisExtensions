@@ -1,15 +1,16 @@
 import cssText from "data-text:~style.css";
 import type { PlasmoCSConfig } from "plasmo";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-import faviconIco from "../assets/icon.png";
+import faviconIco from "data-base64:../assets/icon.png";
 import { searchConnections } from "./driver";
-import type { MantisConnection, setProgressType, StoredSpace } from "./connections/types";
+import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
 
 export const config: PlasmoCSConfig = {
-    matches: ["<all_urls>"] 
+    matches: ["<all_urls>"],
+    all_frames: true,
 };
 
 // Plasmo code for using tailwindcss in the page
@@ -40,8 +41,8 @@ const sanitizeWidget = (widget: HTMLElement, connection: MantisConnection) => {
 // Exits the dialog
 const CloseButton = ({ close }: { close: () => void }) => {
     return <button
-    onClick={close}
-    className={`absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold`}
+        onClick={close}
+        className={`absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold`}
     >
         &times;
     </button>;
@@ -62,7 +63,7 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => {
 const ArrowHead = ({ left, disabled }: { left: boolean, disabled: boolean }) => {
     return (
         <i
-            style={{ 
+            style={{
                 borderColor: disabled ? "#D1D5DB" : "#2563EB", // Using valid CSS hex colors
                 borderStyle: "solid",
                 borderWidth: "0 3px 3px 0",
@@ -84,6 +85,100 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
     const [noteText, setNoteText] = useState<string | null>(null);
     const [save, setSave] = useState(false); // Whether the space has been saved
     const [connectionIdx, setConnectionIdx] = useState(0); // Index of the active connection, there can be multiple
+    const [WSStatus, setWSStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+    const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
+
+    const logContainerRef = useRef<HTMLDivElement>(null);
+    
+    // Check if the log scroll is at the bottom
+    const isScrolledToBottom = () => {
+        const container = logContainerRef.current;
+        if (!container) return false;
+        
+        const threshold = 10;
+        return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+    };
+    
+    // Scroll to bottom effect when new messages arrive
+    useEffect(() => {
+        if (logMessages.length > 0 && logContainerRef.current) {
+            if (isScrolledToBottom()) {
+                const container = logContainerRef.current;
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+    }, [logMessages]);
+
+    const establishLogSocket = (space_id: string) => {
+        const backendApiUrl = new URL(process.env.PLASMO_PUBLIC_MANTIS_API);
+        const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
+        const baseWsUrl = isLocalhost
+            ? process.env.PLASMO_PUBLIC_MANTIS_API.replace('http://', 'ws://').replace('https://', 'ws://')
+            : process.env.PLASMO_PUBLIC_MANTIS_API.replace('https://', 'wss://');
+
+        const socketUrl = `${baseWsUrl}/ws/synthesis_progress/${space_id}/`;
+        let reconnectTimer: NodeJS.Timeout;
+
+        const connectWebSocket = () => {
+            setWSStatus('connecting');
+            const ws = new WebSocket(socketUrl);
+
+            ws.onopen = () => {
+                setWSStatus('connected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: 'Connected to log stream',
+                    level: 'INFO',
+                    timestamp: new Date().toISOString(),
+                }]);
+            };
+
+            ws.onmessage = (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'log' || data.log) {
+                        const logMsg: LogMessage = {
+                            type: data.type || 'log',
+                            message: data.message || data.log,
+                            level: data.level || 'INFO',
+                            timestamp: data.timestamp || new Date().toISOString(),
+                            logger: data.logger,
+                        };
+                        setLogMessages(prev => [...prev, logMsg]);
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                setWSStatus('disconnected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: 'WebSocket error occurred',
+                    level: 'ERROR',
+                    timestamp: new Date().toISOString(),
+                }]);
+            };
+
+            ws.onclose = (event) => {
+                setWSStatus('disconnected');
+                setLogMessages(prev => [...prev, {
+                    type: 'log',
+                    message: `Connection closed: ${event.reason || 'Unknown reason'} (code: ${event.code})`,
+                    level: 'WARNING',
+                    timestamp: new Date().toISOString(),
+                }]);
+
+                // Attempt to reconnect after 5 seconds
+                reconnectTimer = setTimeout(connectWebSocket, 5000);
+            };
+
+            return ws;
+        };
+
+        connectWebSocket();
+    }
 
     // When the connection is run
     const runConnection = async (connection: MantisConnection) => {
@@ -94,7 +189,11 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         };
 
         try {
-            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI, setProgress);
+            const { spaceId: _spaceId, createdWidget } = await connection.createSpace(connection.injectUI,
+                setProgress,
+                connection.onMessage || ((_, __) => { }),
+                connection.registerListeners || ((_) => { }),
+                establishLogSocket);
 
             sanitizeWidget(createdWidget, connection);
             setSpaceId(_spaceId);
@@ -179,11 +278,10 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                     </p>
                     <div className="flex space-x-2 w-full">
                         <button
-                            className={`w-full text-white py-2 px-4 rounded transition-opacity ${
-                                save
+                            className={`w-full text-white py-2 px-4 rounded transition-opacity ${save
                                     ? "bg-gray-400 cursor-not-allowed"
                                     : "bg-gradient-to-r from-green-300 to-green-500 hover:opacity-90"
-                            }`}
+                                }`}
                             onClick={onSave}
                             disabled={save}
                         >
@@ -221,7 +319,9 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         return (
             <DialogHeader>
                 {connectionData}
-                <div className="flex flex-col items-center space-y-2">
+                {state !== GenerationProgress.CREATING_SPACE ? 
+                // Raw progress bar with no logs
+                (<div className="flex flex-col items-center space-y-2">
                     <div className="w-full bg-gray-300 rounded-full h-4">
                         <div
                             className="bg-blue-500 h-4 rounded-full transition-all duration-500 animate-pulse"
@@ -229,7 +329,57 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                         />
                     </div>
                     <span className="text-sm font-medium text-blue-600">{state}</span>
-                </div>
+                </div>) 
+                
+                // Progress bar + logs
+                : (<div className="flex flex-col items-center space-y-4">
+                    <div className="w-full">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                            <span className="text-xs font-medium text-blue-600">{state}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                                className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
+                                style={{ width: `${progressPercent * 100}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="w-full mt-4 border rounded-lg overflow-hidden">
+                        <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b">
+                            <span className="font-medium">Log Messages</span>
+                            <div className="flex items-center">
+                                <span className={`w-2 h-2 rounded-full mr-2 ${WSStatus === 'connected' ? 'bg-green-500' :
+                                        WSStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`}></span>
+                                <span className="text-xs text-gray-500">{WSStatus}</span>
+                            </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto p-3 bg-gray-50 font-mono text-sm" ref={logContainerRef}>
+                            {logMessages.length === 0 ? (
+                                <div className="text-center text-gray-400 py-2">No log messages yet</div>
+                            ) : (
+                                logMessages.map((log, i) => (
+                                    <div
+                                        key={i}
+                                        className={`mb-1 pl-2 border-l-2 ${log.level === 'ERROR' ? 'border-red-500 text-red-800' :
+                                                log.level === 'WARNING' ? 'border-yellow-500 text-yellow-800' :
+                                                    'border-blue-500 text-gray-800'
+                                            }`}
+                                    >
+                                        <div className="flex items-start">
+                                            <span className="text-xs text-gray-500 mr-2">
+                                                {new Date(log.timestamp || '').toLocaleTimeString()}
+                                            </span>
+                                            <span>{log.message}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>)}
             </DialogHeader>
         );
     }
@@ -295,6 +445,23 @@ const PlasmoFloatingButton = () => {
     useEffect(() => {
         // Search for which connections are active on the current URL
         setActiveConnections(searchConnections(window.location.href));
+
+        // NOTE: This window code is only used when on a mantis page that was
+        // injected by a connection. Its purpose is because the mantis page
+        // doesn't have access to chrome APIs, so it just uses a builtin
+        // postMessage, and then we intercept that and forward it using
+        // the chrome API
+        window.addEventListener("message", async (event) => {
+            if (event.source !== window) return;
+
+            const message = event.data;
+
+            // Check that the message is intended for the extension
+            // and forward the message to background.ts
+            if (message.action === "mantis_msg") {
+                await chrome.runtime.sendMessage(message);
+            }
+        });
     }, []);
 
     useEffect(() => {
@@ -314,7 +481,7 @@ const PlasmoFloatingButton = () => {
                     continue;
                 }
 
-                const createdWidget = await connection.injectUI(space.id);
+                const createdWidget = await connection.injectUI(space.id, connection.onMessage || ((_, __) => { }), connection.registerListeners || ((_) => { }));
 
                 sanitizeWidget(createdWidget, connection);
             }

@@ -1,11 +1,11 @@
 import { create } from "domain";
-import type { MantisConnection, injectUIType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 import { simple as walk } from "acorn-walk";
 import escodegen from "escodegen";
 
-import docsIcon from "../../../assets/docs.png";
-import { registerAuthCookies, reqSpaceCreation } from "../../driver";
+import docsIcon from "data-base64:../../../assets/docs.png";
+import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
 const acorn = require("acorn"); // This package only works with old require
 import { median } from "d3-array";
@@ -14,7 +14,7 @@ const trigger = (url: string) => {
     return url.includes("docs.google.com/document/d");
 }
 
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     let extractedData: any[] = [];
@@ -113,37 +113,21 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType)
         "title": "title",
         "idx": "numeric",
         "segment": "semantic"
-    });
+    }, establishLogSocket);
 
     setProgress(GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress(GenerationProgress.COMPLETED);
 
     return { spaceId, createdWidget };
 }
-const injectUI = async (space_id: string) => {
+const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     await registerAuthCookies();
 
-    const scale = 0.75;
-
-    // Create the iframe, hidden by default
-    const iframeScalerParent = document.createElement("div");
-    iframeScalerParent.style.width = "100%";
-    iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.border = "none";
-
-    const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
-    iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
-    iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
-    iframe.style.overflow = "hidden";
-    iframeScalerParent.appendChild(iframe);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
 
     document.querySelector("#docs-editor-container").prepend (iframeScalerParent);
 
