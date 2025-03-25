@@ -3,8 +3,8 @@ import type { PlasmoCSConfig } from "plasmo";
 import React, { useEffect, useRef, useState } from "react";
 
 import faviconIco from "data-base64:../assets/icon.png";
-import { searchConnections } from "./driver";
-import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
+import { searchConnections } from "./connection_manager";
+import type { LogMessage, MantisConnection } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
 

@@ -1,4 +1,4 @@
-import { CONNECTIONS } from "../driver";
+import { CONNECTIONS } from "../connection_manager";
 import { expect, test } from '@jest/globals';
 
 test ("Tests are working", () => {

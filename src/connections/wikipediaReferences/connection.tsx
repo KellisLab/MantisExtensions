@@ -1,4 +1,3 @@
-import { create } from "domain";
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 
