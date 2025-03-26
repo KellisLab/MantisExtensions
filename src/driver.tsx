@@ -4,7 +4,7 @@ import { fetchFromCelerySDK } from "./requests";
 let COOKIE: string = "";
 
 // Get cookies for authentication from which ever domain hosts cookies
-const refetchAuthCookies = async () => {
+export const refetchAuthCookies = async () => {
     await new Promise<void>((resolve, reject) => {
         chrome.runtime.sendMessage({ action: "getAuthCookies" }, (response) => {
             if (chrome.runtime.lastError) {
