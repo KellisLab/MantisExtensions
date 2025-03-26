@@ -156,7 +156,7 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
 const onMessage = async (messageType: string, messagePayload: any) => {
     // On point select
     if (messageType === "select") {
-        const paragraphIdx = messagePayload.point.metadata.values.paragraph_idx;
+        const paragraphIdx = messagePayload.point.metadata.paragraph_idx;
         const paragraphs = document.querySelectorAll('#mw-content-text .mw-parser-output > p');
         
         if (paragraphs.length > 0) {
@@ -174,7 +174,7 @@ const onMessage = async (messageType: string, messagePayload: any) => {
 
     // On point load
     if (messageType == "add_point") {
-        const paragraphIdx = messagePayload.point.metadata.values.paragraph_idx;
+        const paragraphIdx = messagePayload.point.metadata.paragraph_idx;
         const clusterColor = messagePayload.cluster.color;
 
         const paragraphs = document.querySelectorAll('#mw-content-text .mw-parser-output > p');
