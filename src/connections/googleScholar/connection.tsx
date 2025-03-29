@@ -30,7 +30,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         innerUrl.searchParams.set("start", start.toString());
         innerUrl.searchParams.set("as_sdt", as_sdt);
 
-        const proxyUrl = `${process.env.PLASMO_PUBLIC_SDK}/get_proxy/${encodeURIComponent(innerUrl.toString())}`;
+        const proxyUrl = `${process.env.PLASMO_PUBLIC_SDK}/api/get_proxy/${encodeURIComponent(innerUrl.toString())}`;
 
         const apiResponse = await fetch(proxyUrl);
 

@@ -179,7 +179,7 @@ deleteSpacesWhere(predicate: (space: StoredSpace) => boolean): Promise<void>
 ### Connection API
 
 ```typescript
-// Search for active connections
+// Search for active connections, part of connection_manager.tsx
 searchConnections(url: string): MantisConnection[]
 
 // Create a new space

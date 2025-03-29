@@ -111,14 +111,14 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${eutilsParams.toString()}`;
     const searchResponse = await fetch(searchUrl);
     const searchData = await searchResponse.json();
-    const ids = searchData.esearchresult.idlist;
+    const ids = [...new Set(searchData.esearchresult.idlist)];
 
     // Fetch articles in batches of 50
     const batchSize = 50;
     const allArticles: PubMedArticle[] = [];
 
     for (let i = 0; i < ids.length; i += batchSize) {
-        await new Promise(resolve => setTimeout(resolve, 1000));  // Rate limit
+        await new Promise(resolve => setTimeout(resolve, 250));  // Rate limit
 
         const batchIds = ids.slice(i, i + batchSize);   // Get current batch of IDs
 
