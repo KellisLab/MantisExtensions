@@ -6,8 +6,9 @@ import { GoogleDocsConnection } from "./connections/googleDocs/connection";
 import { GoogleScholarConnection } from "./connections/googleScholar/connection";
 import type { onMessageType, registerListenersType } from "./connections/types";
 import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
+import { FacebookConnection } from "./connections/facebook/connection";
 
-export const CONNECTIONS = [WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
+export const CONNECTIONS = [FacebookConnection, WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection];
 
 let COOKIE: string = "";
 
