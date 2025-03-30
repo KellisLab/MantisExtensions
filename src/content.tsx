@@ -3,10 +3,11 @@ import type { PlasmoCSConfig } from "plasmo";
 import React, { useEffect, useRef, useState } from "react";
 
 import faviconIco from "data-base64:../assets/icon.png";
-import { searchConnections } from "./driver";
-import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
+import { searchConnections } from "./connection_manager";
+import type { LogMessage, MantisConnection } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
+import { refetchAuthCookies } from "./driver";
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
@@ -83,6 +84,8 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
     const [spaceId, setSpaceId] = useState<string | null>(null);
     const [dataName, setDataName] = useState<string | null>(document.title); // Name of the space that will be created
     const [noteText, setNoteText] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
+    const [authErrorText, setAuthErrorText] = useState<string | null>(null);
     const [save, setSave] = useState(false); // Whether the space has been saved
     const [connectionIdx, setConnectionIdx] = useState(0); // Index of the active connection, there can be multiple
     const [WSStatus, setWSStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
@@ -255,7 +258,20 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
             }
         };
 
+        const checkForAuth = async () => {    
+            // Try to get the auth cookies
+            // if they don't exist
+            // then notify the user
+            try {
+                await refetchAuthCookies ();
+            } catch (e) {
+                setAuthErrorText(e.message);
+                setIsAuthenticated(false);
+            }
+        }
+
         checkForExistingSpace();
+        checkForAuth();
     });
 
     if (state === GenerationProgress.COMPLETED) {
@@ -423,13 +439,20 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
             {noteText && (
                 <>
                     <div className="h-2" />
-                    <p className="text-gray-500">{noteText}</p>
+                    <p className="text-red-500">{noteText}</p>
+                </>
+            )}
+            {authErrorText && (
+                <>
+                    <div className="h-2" />
+                    <p className="text-red-500">{authErrorText} (Try logging in)</p>
                 </>
             )}
             <button
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 px-4 rounded-lg 
                            hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 mt-4"
                 onClick={() => runConnection(activeConnection)}
+                disabled={!isAuthenticated}
             >
                 <span>Create</span>
                 <span className="animate-pulse">✨</span>
