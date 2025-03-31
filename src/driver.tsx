@@ -18,7 +18,7 @@ export const refetchAuthCookies = async () => {
             console.log (COOKIE);
 
             if (response.cookies.find ((cookie) => cookie.name === "sessionid") === undefined) {
-                throw new Error (`User is not authenticated with host: ${process.env.PLASMO_PUBLIC_FRONTEND}`);
+                reject (new Error(`User is not authenticated with host: ${process.env.PLASMO_PUBLIC_FRONTEND}`));
             }
 
             resolve();
