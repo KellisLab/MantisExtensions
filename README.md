@@ -2,6 +2,8 @@
 
 A browser extension that connects third-party applications with Mantis, enabling seamless integration of web content into Mantis spaces.
 
+By using the Mantis Connection extension, you agree to Mantis' Privacy Policy accessible at [home.withmantis.com/privacy-policy](https://home.withmantis.com/privacy-policy).
+
 ## Overview
 
 Mantis Connection is a browser extension built with Plasmo Framework that allows users to create and manage Mantis spaces directly from supported web pages. It provides a floating action button that appears on compatible websites and enables content extraction and space creation. It is styled with TailwindCSS
