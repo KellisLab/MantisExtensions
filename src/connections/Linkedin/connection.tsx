@@ -9,7 +9,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 
 
-const trigger = (url: string) => url.includes("https://www.linkedin.com/in/sadhikakamchetty/");
+const trigger = (url: string) =>
+    url.includes("linkedin.com/in/");
+  
 
 const createSpace = async (
   injectUI,
