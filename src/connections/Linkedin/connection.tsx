@@ -60,7 +60,7 @@ const createSpace = async (
   const sanitize = (text: string) => text.replace(/[^\x00-\x7F]/g, "").substring(0, 1000).trim();
 
   // Name + Headline
-  const name = document.querySelector("h1.text-heading-xlarge")?.textContent?.trim() || "Sadhika Kamchetty";
+  const name = document.querySelector("h1.text-heading-xlarge")?.textContent?.trim() || "Unknown Name";
   const headline = document.querySelector(".text-body-medium.break-words")?.textContent?.trim() || "";
   extractedData.push({
     uuid: uuidv4(),
