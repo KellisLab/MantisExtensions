@@ -3,10 +3,11 @@ import type { PlasmoCSConfig } from "plasmo";
 import React, { useEffect, useRef, useState } from "react";
 
 import faviconIco from "data-base64:../assets/icon.png";
-import { searchConnections } from "./driver";
-import type { LogMessage, MantisConnection, setProgressType, StoredSpace } from "./connections/types";
+import { searchConnections } from "./connection_manager";
+import type { LogMessage, MantisConnection } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
+import { refetchAuthCookies } from "./driver";
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
@@ -384,6 +385,17 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
         );
     }
 
+    let authErrorText = null;
+    
+    // Try to get the auth cookies
+    // if they don't exist
+    // then notify the user
+    try {
+        refetchAuthCookies ();
+    } catch (e) {
+        authErrorText = e.message;
+    }
+
     return (
         <DialogHeader>
             <CloseButton close={close} />
@@ -424,6 +436,12 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                 <>
                     <div className="h-2" />
                     <p className="text-black-500">{noteText}</p>
+                </>
+            )}
+            {authErrorText && (
+                <>
+                    <div className="h-2" />
+                    <p className="text-red-500">{authErrorText}</p>
                 </>
             )}
             <button
