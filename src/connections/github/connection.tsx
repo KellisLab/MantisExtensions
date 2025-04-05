@@ -1,41 +1,25 @@
-import type { MantisConnection, injectUIType, setProgressType } from "../types";
+import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 import escodegen from "escodegen";
 
-import githubIcon from "../../../assets/github.png";
-import { registerAuthCookies, reqSpaceCreation } from "../../driver";
+import githubIcon from "data-base64:../../../assets/github.png";
+import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
+const { Octokit } = require("@octokit/core");
+
 
 const trigger = (url: string) => {
     return url.includes("github.com/") && url.includes("/");
 };
 
-const { Octokit } = require("@octokit/core");
 
 const octokit = new Octokit({
     auth: process.env.PLASMO_PUBLIC_GITHUB_AUTH
 });
 
 const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
-    const scale = 0.75;
-
-    const iframeScalerParent = document.createElement("div");
-    iframeScalerParent.style.width = "100%";
-    iframeScalerParent.style.height = "80vh";
-    iframeScalerParent.style.border = "none";
-    iframeScalerParent.style.display = "block";
-    iframeScalerParent.style.position = "relative"; 
-
     await registerAuthCookies();
 
-    const iframe = document.createElement("iframe");
-    iframe.src = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}`;
-    iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
-    iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
-    iframe.style.overflow = "hidden";
-    iframeScalerParent.appendChild(iframe);
+    const iframeScalerParent = await getSpacePortal (space_id, onMessage, registerListeners);
 
     const repoContent = document.querySelector(".repository-content");
     if (repoContent) {
@@ -46,7 +30,7 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
 
     return iframeScalerParent;
 };
-const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType) => {
+const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const currentUrl = new URL(window.location.href);
@@ -128,13 +112,14 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             "link": "links",
             "diff": "semantic"
         },
+        establishLogSocket,
         repo
     );
 
     setProgress(GenerationProgress.INJECTING_UI);
 
     const spaceId = spaceData.space_id;
-    const createdWidget = await injectUI(spaceId);
+    const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
 
     setProgress(GenerationProgress.COMPLETED);
 
