@@ -187,7 +187,6 @@ export const registerAuthCookies = async () => {
         });
     }
 }
-
 export const getUuidV4 = () => {
     return crypto.randomUUID();
 }
