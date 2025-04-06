@@ -110,6 +110,7 @@ export interface MantisConnection {
     injectUI: injectUIType; // A function that injects the UI into the page
     onMessage?: onMessageType; // A function that handles messages from the injected Mantis
     registerListeners?: registerListenersType; // A function that registers a listeners on the main page that can send messages to the injected Mantis
+    onPageLoad?: () => void;
 }
 
 // This is what is stored in chrome local storage
