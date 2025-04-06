@@ -95,14 +95,14 @@ const monitorDOM = () => {
 };
 
 const addButton = (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
-    const feedElement = document.querySelector("div[role='banner']");
-    if (!feedElement) return console.error("Couldn't find Facebook banner");
+    const mainElement = document.querySelector("div.x1yzbdb");
+    if (!mainElement) return console.error("Couldn't find Facebook main elements");
 
     const createSpaceButton = document.createElement("button");
     createSpaceButton.textContent = "Create space";
     createSpaceButton.addEventListener("click", () => { createSpace(injectUI, setProgress, onMessage, registerListeners, establishLogSocket) });
 
-    feedElement.prepend(createSpaceButton);
+    mainElement.prepend(createSpaceButton);
 };
 
 
