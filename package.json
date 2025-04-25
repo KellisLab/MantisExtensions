@@ -52,8 +52,7 @@
   "manifest": {
     "permissions": [
       "storage",
-      "cookies",
-      "webRequest"
+      "cookies"
     ],
     "host_permissions": [
       "https://*/*",
