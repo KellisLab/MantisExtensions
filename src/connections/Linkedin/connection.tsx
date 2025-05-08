@@ -436,22 +436,7 @@ extractedData.push(...followedCompanies);
         
         let highlighterMode = false;
 
-const summarizeBtn = document.createElement("button");
-summarizeBtn.innerText = "🖊️ Enable Highlighter";
-summarizeBtn.style.cssText = `
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  padding: 10px 16px;
-  background: #0073b1;
-  color: white;
-  border-radius: 8px;
-  border: none;
-  z-index: 99999;
-  cursor: pointer;
-`;
 
-document.body.appendChild(summarizeBtn);
 
 // Add highlighter CSS
 const style = document.createElement("style");
@@ -461,57 +446,7 @@ style.innerHTML = `.mantis-highlight {
 }`;
 document.head.appendChild(style);
 
-// Handle clicks
-summarizeBtn.onclick = async () => {
-  if (!highlighterMode) {
-    highlighterMode = true;
-    summarizeBtn.innerText = "🧠 Summarize Highlights";
-    summarizeBtn.style.background = "#f39c12";
-  } else {
-    highlighterMode = false;
-    summarizeBtn.innerText = "🖊️ Enable Highlighter";
-    summarizeBtn.style.background = "#0073b1";
 
-    const highlights = document.querySelectorAll(".mantis-highlight");
-    const combinedText = Array.from(highlights)
-      .map(el => el.textContent?.trim() || "")
-      .join("\n\n");
-
-    if (!combinedText) {
-      alert("⚠️ No highlighted content.");
-      return;
-    }
-
-    const summary = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer YOUR_OPENAI_KEY`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [{ role: "user", content: `Summarize the following:\n\n${combinedText}` }],
-        temperature: 0.5
-      })
-    }).then(res => res.json()).then(data =>
-      data.choices?.[0]?.message?.content || "No summary returned."
-    );
-
-    alert("📝 Summary:\n\n" + summary);
-  }
-};
-
-// Highlighter click listener
-document.addEventListener("click", (e) => {
-  if (!highlighterMode) return;
-
-  const el = e.target as HTMLElement;
-  if (el.closest("button")) return;
-
-  el.classList.toggle("mantis-highlight");
-  e.preventDefault();
-  e.stopPropagation();
-}, true);
 
 
       
