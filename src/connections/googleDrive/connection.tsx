@@ -1,14 +1,8 @@
-import { create } from "domain";
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
-import { simple as walk } from "acorn-walk";
-import escodegen from "escodegen";
 
 import driveIcon from "data-base64:../../../assets/drive.png";
 import { getSpacePortal, reqSpaceCreation} from "../../driver";
-
-const acorn = require("acorn"); // This package only works with old require
-import { median } from "d3-array";
 
 const trigger = (url: string) => {
     return url.includes("drive.google.com");
