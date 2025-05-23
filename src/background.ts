@@ -96,7 +96,7 @@ async function initiateSignIn(): Promise<string | undefined> {
       console.log("Interactive sign-in failed or was cancelled.");
       return undefined; // Return undefined if no token in the result
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error during interactive sign-in:", error);
     console.error("Error details:", JSON.stringify(error, null, 2));
     return undefined; // Return undefined if an error occurred
