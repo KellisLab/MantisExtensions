@@ -1,3 +1,5 @@
+import { request } from "http";
+
 // This is used to register cookies in the browser
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "setCookie") {
@@ -41,6 +43,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
+
 const communications = {};
 
 // This is used to register communication channels between the background script and the injected Mantis
@@ -78,4 +81,85 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             return true;
         }
     }
+});
+
+// Retrieve access tokens
+async function initiateSignIn(): Promise<string | undefined> {
+  try {
+    const result = await chrome.identity.getAuthToken({
+      interactive: true
+    });
+    if (result && result.token) {
+      console.log("Access token retrieved after interactive sign-in:", result.token);
+      return result.token; // Return the token string from the result object
+    } else {
+      console.log("Interactive sign-in failed or was cancelled.");
+      return undefined; // Return undefined if no token in the result
+    }
+  } catch (error: any) {
+    console.error("Error during interactive sign-in:", error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+    return undefined; // Return undefined if an error occurred
+  }
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "initiateOAuth") {
+    (async () => {
+      try {
+        const token = await initiateSignIn();
+        if (!token) {
+          sendResponse({ success: false, error: "Failed to retrieve access token." });
+          return;
+        }
+
+        const allFiles: any[] = [];
+        let nextPageToken: string | undefined = undefined;
+
+        do {
+          const url = new URL("https://www.googleapis.com/drive/v3/files");
+          url.searchParams.set("pageSize", "1000"); // max per API page
+          url.searchParams.set("fields", "nextPageToken, files(id, name)");
+          if (nextPageToken) {
+            url.searchParams.set("pageToken", nextPageToken);
+          }
+
+          const res = await fetch(url.toString(), {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            sendResponse({
+              success: false,
+              error: `Drive API error: ${errorData.error?.message || res.statusText}`,
+            });
+            return;
+          }
+
+          const data = await res.json();
+          allFiles.push(...data.files);
+
+          // Stop at 2000 files
+          if (allFiles.length >= 2000) {
+            allFiles.length = 2000; // truncate if over
+            break;
+          }
+
+          nextPageToken = data.nextPageToken;
+        } while (nextPageToken);
+
+        console.log("✅ Fetched Drive Files (max 2000):", allFiles);
+        sendResponse({ success: true, token, driveFiles: allFiles });
+      } catch (err) {
+        sendResponse({
+          success: false,
+          error: (err as Error).message || "Failed to fetch Google Drive metadata",
+        });
+      }
+    })();
+    return true;
+  }
 });

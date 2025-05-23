@@ -53,12 +53,16 @@
     "permissions": [
       "storage",
       "cookies",
-      "webRequest"
+      "identity"
     ],
     "host_permissions": [
       "https://*/*",
       "http://*/*"
-    ]
+    ],
+    "oauth2": {
+      "client_id": "643972847997-jvqlsaierktjotv6df3fuva98degkiui.apps.googleusercontent.com",
+      "scopes": ["https://www.googleapis.com/auth/drive.readonly"]
+    }
   },
   "type": "module"
 }
