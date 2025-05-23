@@ -5,7 +5,7 @@ import { simple as walk } from "acorn-walk";
 import escodegen from "escodegen";
 
 import driveIcon from "data-base64:../../../assets/drive.png";
-import { getSpacePortal, registerAuthCookies, reqSpaceCreation} from "../../driver";
+import { getSpacePortal, reqSpaceCreation} from "../../driver";
 
 const acorn = require("acorn"); // This package only works with old require
 import { median } from "d3-array";

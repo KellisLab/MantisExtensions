@@ -90,7 +90,7 @@ async function initiateSignIn(): Promise<string | undefined> {
       interactive: true
     });
     if (result && result.token) {
-      console.log("Access token retrieved after interactive sign-in:", result.token);
+      console.log("Access retrieved");
       return result.token; // Return the token string from the result object
     } else {
       console.log("Interactive sign-in failed or was cancelled.");
