@@ -1,5 +1,5 @@
 import { request } from "http";
-
+const MAX_DRIVE_FILES_TO_FETCH = 2000
 // This is used to register cookies in the browser
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "setCookie") {
@@ -143,7 +143,8 @@ const allFiles: DriveFile[] = [];
           allFiles.push(...data.files);
 
           // Stop at 2000 files
-if (allFiles.length >= MAX_DRIVE_FILES_TO_FETCH) {
+
+          if (allFiles.length >= MAX_DRIVE_FILES_TO_FETCH) {
             allFiles.length = 2000; // truncate if over
             break;
           }

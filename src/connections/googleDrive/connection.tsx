@@ -13,7 +13,7 @@ const getDriveFiles = async () => {
             const response = await new Promise<{
             success: boolean;
             token?: string;
-driveFiles?: DriveFile[];
+            driveFiles?: any[];
             error?: string;
             }>((resolve, reject) => {
             chrome.runtime.sendMessage({ action: "initiateOAuth" }, (response) => {
