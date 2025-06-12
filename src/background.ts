@@ -1,5 +1,4 @@
 import { request } from "http";
-const MAX_DRIVE_FILES_TO_FETCH = 2000
 // This is used to register cookies in the browser
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "setCookie") {
@@ -113,7 +112,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-const allFiles: DriveFile[] = [];
+        const allFiles: DriveFile[] = [];
         let nextPageToken: string | undefined = undefined;
 
         do {
@@ -142,9 +141,9 @@ const allFiles: DriveFile[] = [];
           const data = await res.json();
           allFiles.push(...data.files);
 
-          // Stop at 2000 files
-
-          if (allFiles.length >= MAX_DRIVE_FILES_TO_FETCH) {
+          // Stop at 2000 files (maximum allowed by MantisAPI by default)
+        
+          if (allFiles.length >= 2000) {
             allFiles.length = 2000; // truncate if over
             break;
           }

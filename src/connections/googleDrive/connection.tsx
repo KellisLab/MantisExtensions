@@ -39,6 +39,10 @@ const getDriveFiles = async () => {
 const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
     const fileMetadata = await getDriveFiles();
+    if (!fileMetadata) {  
+        console.error("Failed to retrieve file metadata from Google Drive.");  
+        return; 
+    }  
     
     setProgress(GenerationProgress.CREATING_SPACE);
 
