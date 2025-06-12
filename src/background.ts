@@ -113,7 +113,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-        const allFiles: any[] = [];
+const allFiles: DriveFile[] = [];
         let nextPageToken: string | undefined = undefined;
 
         do {
