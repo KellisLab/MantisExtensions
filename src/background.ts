@@ -143,7 +143,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           allFiles.push(...data.files);
 
           // Stop at 2000 files
-          if (allFiles.length >= 2000) {
+if (allFiles.length >= MAX_DRIVE_FILES_TO_FETCH) {
             allFiles.length = 2000; // truncate if over
             break;
           }
