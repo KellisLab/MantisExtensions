@@ -156,7 +156,7 @@ if (allFiles.length >= MAX_DRIVE_FILES_TO_FETCH) {
       } catch (err) {
         sendResponse({
           success: false,
-          error: (err as Error).message || "Failed to fetch Google Drive metadata",
+error: err instanceof Error ? err.message : String(err) || "Failed to fetch Google Drive metadata",
         });
       }
     })();
