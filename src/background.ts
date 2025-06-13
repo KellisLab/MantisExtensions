@@ -1,4 +1,3 @@
-import { request } from "http";
 // This is used to register cookies in the browser
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "setCookie") {
