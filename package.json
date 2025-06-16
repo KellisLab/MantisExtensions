@@ -63,7 +63,7 @@
       "http://*/*"
     ],
     "oauth2": {
-      "client_id": "643972847997-jvqlsaierktjotv6df3fuva98degkiui.apps.googleusercontent.com",
+      "client_id": "393216054869-8km195hvrk1og9lkeiucl27mbj6ht01t.apps.googleusercontent.com",
       "scopes": [
         "https://www.googleapis.com/auth/drive.readonly"
       ]
