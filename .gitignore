@@ -40,3 +40,4 @@ keys.json
 
 # Windows Zone.Identifier files
 *:Zone.Identifier
+package-lock.json
