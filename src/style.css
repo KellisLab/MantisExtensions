@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@media print {
+  [id^="plasmo-overlay-"],
+  .plasmo-extension-container {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
