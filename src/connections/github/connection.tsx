@@ -77,6 +77,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             });
             diff = diffResponse.data as string;
         } catch (e) {
+            console.error("Failed to retrieve diff:", e);
             diff = "Diff unavailable";
         }
 

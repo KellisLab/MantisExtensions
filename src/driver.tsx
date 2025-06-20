@@ -29,7 +29,7 @@ export const refetchAuthCookies = async () => {
 refetchAuthCookies ();
 
 export const getSpacePortal = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
-    const scale = 0.75;
+    const IFRAME_SCALE = 0.75;
 
     // Generate uuidv4 using the browser's crypto API
     const uuidv4 = getUuidV4 ();
@@ -67,10 +67,10 @@ export const getSpacePortal = async (space_id: string, onMessage: onMessageType,
     const iframeUrl = `${process.env.PLASMO_PUBLIC_FRONTEND}/space/${space_id}?ext_id=${uuidv4}`;
     iframe.src = iframeUrl;
     iframe.style.border = "none";
-    iframe.style.transform = `scale(${scale})`;
+    iframe.style.transform = `scale(${IFRAME_SCALE})`;
     iframe.style.transformOrigin = "top left";
-    iframe.style.width = (100 / scale).toString() + "%";
-    iframe.style.height = (80 / scale).toString() + "vh";
+    iframe.style.width = (100 / IFRAME_SCALE).toString() + "%";
+    iframe.style.height = (80 / IFRAME_SCALE).toString() + "vh";
     iframe.style.overflow = "hidden";
     
     // Create the popout button
