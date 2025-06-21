@@ -6,9 +6,8 @@ import { GoogleScholarConnection } from "./connections/googleScholar/connection"
 import { WikipediaSegmentConnection } from "./connections/wikipediaSegment/connection";
 import { GmailConnection } from "./connections/Gmail/connection";
 import { LinkedInConnection } from "./connections/Linkedin/connection";
-
-
-export const CONNECTIONS = [GmailConnection, WikipediaSegmentConnection, WikipediaReferencesConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection,LinkedInConnection];
+import {GitHubConnection} from "./connections/github/connection";
+export const CONNECTIONS = [GmailConnection, WikipediaReferencesConnection, WikipediaSegmentConnection, GoogleConnection, PubmedConnection, GoogleDocsConnection, GoogleScholarConnection, LinkedInConnection, GitHubConnection];
 
 export const searchConnections = (url: string, ) => {
     const connections = CONNECTIONS.filter(connection => connection.trigger(url));
