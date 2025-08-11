@@ -213,7 +213,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
         >
             {close && <CloseButton close={close} />}
             <div
-                className="min-h-[200px] max-h-[70vh] overflow-y-auto"
+                className="min-h-[200px] max-h-[70vh] overflow-y-auto -mr-6 pr-6"
                 style={{ width: `${panelSize.width}px`, height: `${panelSize.height}px`, maxWidth: '92vw' }}
             >
                 <div className="flex items-center justify-center mb-6 cursor-grab select-none"
@@ -285,7 +285,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
 // Displays a navigation arrowhead
 const ArrowHead = ({ left, disabled }: { left: boolean, disabled: boolean }) => {
     return (
-        <motion.i
+        <i
             style={{
                 borderColor: disabled ? "#D1D5DB" : "#6366F1",
                 borderStyle: "solid",
@@ -294,8 +294,6 @@ const ArrowHead = ({ left, disabled }: { left: boolean, disabled: boolean }) => 
                 padding: "3px",
                 transform: `rotate(${left ? "135deg" : "-45deg"})`,
             }}
-            whileHover={!disabled ? { x: left ? -3 : 3 } : {}}
-            transition={{ type: "spring", stiffness: 500 }}
         />
     );
 }
