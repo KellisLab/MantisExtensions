@@ -378,7 +378,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     const establishLogSocket = (space_id: string) => {
         const backendApiUrl = new URL(process.env.PLASMO_PUBLIC_MANTIS_API);
-            const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
+        const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
         const baseWsUrl = isLocalhost
             ? process.env.PLASMO_PUBLIC_MANTIS_API.replace('http://', 'ws://').replace('https://', 'ws://')
             : process.env.PLASMO_PUBLIC_MANTIS_API.replace('https://', 'wss://');
@@ -510,6 +510,13 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     const progressPercent = Progression.indexOf(state) / (Progression.length - 1);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowInitialText(false);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, []);
+
     // On opening
     useEffect(() => {
         // Make sure the user knows that they will be overwriting the existing space on the URL
@@ -592,13 +599,6 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
             </DialogHeader>
         );
     }
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowInitialText(false);
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, []);
 
     if (running) {
         return (
