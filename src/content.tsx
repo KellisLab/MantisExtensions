@@ -8,6 +8,7 @@ import type { LogMessage, MantisConnection } from "./connections/types";
 import { GenerationProgress, Progression } from "./connections/types";
 import { addSpaceToCache, deleteSpacesWhere, getCachedSpaces } from "./persistent";
 import { refetchAuthCookies } from "./driver";
+import { motion, AnimatePresence} from "framer-motion";
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],
@@ -41,43 +42,267 @@ const sanitizeWidget = (widget: HTMLElement, connection: MantisConnection) => {
 
 // Exits the dialog
 const CloseButton = ({ close }: { close: () => void }) => {
-    return <button
-        onClick={close}
-        className={`absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold`}
-    >
-        &times;
-    </button>;
+    return (
+        <motion.button
+            onClick={close}
+            className="absolute top-4 right-4 z-20 text-gray-400 hover:text-gray-700 text-2xl font-bold transition-colors duration-200"
+            whileHover={{ scale: 1.2, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
+        >
+            &times;
+        </motion.button>
+    );
 };
 
 // Dialog util
-const DialogHeader = ({ children }: { children: React.ReactNode }) => {
+const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode, overlay?: React.ReactNode, close?: () => void }) => {
+    const [panelSize, setPanelSize] = React.useState<{ width: number; height: number }>({ width: 550, height: 330 });
+    const resizingRef = React.useRef<{
+        startX: number;
+        startY: number;
+        startW: number;
+        startH: number;
+        startLeft: number;
+        startTop: number;
+        viewportW: number;
+        viewportH: number;
+        edge: 'top'|'right'|'bottom'|'left';
+    } | null>(null);
+
+    const [pos, setPos] = React.useState<{ top: number; left: number }>(() => {
+        const minMargin = 4;
+        const bottom = 130;
+        const right = 80;
+        const top = Math.max(minMargin, window.innerHeight - bottom - 365);
+        const left = Math.max(minMargin, window.innerWidth - right - 550);
+        return { top, left };
+    });
+    const draggingRef = React.useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null);
+
+    const onMouseMove = React.useCallback((e: MouseEvent) => {
+        if (!resizingRef.current) return;
+        const dx = e.clientX - resizingRef.current.startX;
+        const dy = e.clientY - resizingRef.current.startY;
+
+        const minW = 320;
+        const minH = 200;
+        const maxW = Math.min(window.innerWidth * 0.92, 900);
+        const maxH = Math.min(window.innerHeight * 0.7, 800);
+
+        let newW = resizingRef.current.startW;
+        let newH = resizingRef.current.startH;
+        let newLeft = pos.left;
+        let newTop = pos.top;
+        switch (resizingRef.current.edge) {
+            case 'right':
+                newW = resizingRef.current.startW + dx;
+                break;
+            case 'left':
+                newW = resizingRef.current.startW - dx;
+                newLeft = resizingRef.current.startLeft + dx;
+                break;
+            case 'bottom':
+                newH = resizingRef.current.startH + dy;
+                break;
+            case 'top':
+                newH = resizingRef.current.startH - dy;
+                newTop = resizingRef.current.startTop + dy;
+                break;
+        }
+        newW = Math.max(minW, Math.min(maxW, newW));
+        newH = Math.max(minH, Math.min(maxH, newH));
+        const minMargin = 4;
+        const maxLeft = Math.max(minMargin, resizingRef.current.viewportW - newW - minMargin);
+        const maxTop = Math.max(minMargin, resizingRef.current.viewportH - newH - minMargin);
+        newLeft = Math.max(minMargin, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minMargin, Math.min(maxTop, newTop));
+
+        setPanelSize({ width: newW, height: newH });
+        if (resizingRef.current.edge === 'left' || resizingRef.current.edge === 'top') {
+            setPos({ left: newLeft, top: newTop });
+        }
+    }, []);
+
+    const endResize = React.useCallback(() => {
+        if (!resizingRef.current) return;
+        resizingRef.current = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', endResize);
+        document.body.style.cursor = '';
+        (document.body.style as any).userSelect = '';
+    }, [onMouseMove]);
+
+    const startResize = React.useCallback((e: React.MouseEvent, edge: 'top'|'right'|'bottom'|'left') => {
+        resizingRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startW: panelSize.width,
+            startH: panelSize.height,
+            startLeft: pos.left,
+            startTop: pos.top,
+            viewportW: window.innerWidth,
+            viewportH: window.innerHeight,
+            edge
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', endResize);
+        const cursor = edge === 'left' || edge === 'right' ? 'ew-resize' : 'ns-resize';
+        document.body.style.cursor = cursor;
+        (document.body.style as any).userSelect = 'none';
+        e.preventDefault();
+        e.stopPropagation();
+    }, [panelSize.width, panelSize.height, pos.left, pos.top, onMouseMove, endResize]);
+
+    React.useEffect(() => () => endResize(), [endResize]);
+
+    const onDragMove = React.useCallback((e: MouseEvent) => {
+        if (!draggingRef.current) return;
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        let newLeft = draggingRef.current.startLeft + dx;
+        let newTop = draggingRef.current.startTop + dy;
+
+        const minMargin = 4;
+        const maxLeft = Math.max(minMargin, window.innerWidth - panelSize.width - minMargin);
+        const maxTop = Math.max(minMargin, window.innerHeight - panelSize.height - minMargin);
+        newLeft = Math.max(minMargin, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minMargin, Math.min(maxTop, newTop));
+
+        setPos({ left: newLeft, top: newTop });
+    }, [panelSize.width, panelSize.height]);
+
+    const endDrag = React.useCallback(() => {
+        if (!draggingRef.current) return;
+        draggingRef.current = null;
+        document.removeEventListener('mousemove', onDragMove);
+        document.removeEventListener('mouseup', endDrag);
+        document.body.style.cursor = '';
+        (document.body.style as any).userSelect = '';
+    }, [onDragMove]);
+
+    const startDrag: React.MouseEventHandler<HTMLDivElement> = React.useCallback((e) => {
+        if (resizingRef.current) return;
+        draggingRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startTop: pos.top,
+            startLeft: pos.left
+        };
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('mouseup', endDrag);
+        document.body.style.cursor = 'grabbing';
+        (document.body.style as any).userSelect = 'none';
+        e.preventDefault();
+        e.stopPropagation();
+    }, [pos.top, pos.left, onDragMove, endDrag]);
+
+    React.useEffect(() => () => endDrag(), [endDrag]);
+
     return (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-5 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.15)]">
-            <div className="w-[800px] min-h-[150px] h-fit flex flex-col justify-between">
-                {children}
+        <motion.div 
+            className="fixed bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-xl ring-1 ring-gray-200 relative z-[9999]"
+            style={{ position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px`, bottom: 'auto', right: 'auto' }}
+            initial={{ opacity: 0, scale: 0.98, y: 16, x: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ 
+                type: "spring",
+                damping: 20,
+                stiffness: 300
+            }}
+        >
+            {close && <CloseButton close={close} />}
+            <div
+                className="min-h-[200px] max-h-[70vh] overflow-y-auto"
+                style={{ width: `${panelSize.width}px`, height: `${panelSize.height}px`, maxWidth: '92vw' }}
+            >
+                <div className="flex items-center justify-center mb-6 cursor-grab select-none"
+                     onMouseDown={startDrag}
+                     title="Drag">
+                    <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20,
+                            delay: 0.1
+                        }}
+                        className="mr-3"
+                    >
+                        <img 
+                            src={faviconIco} 
+                            alt="MantisAI" 
+                            className="w-10 h-10"
+                        />
+                    </motion.div>
+                    <motion.h2 
+                        className="text-3xl font-bold bg-black bg-clip-text text-transparent"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        MantisAI
+                    </motion.h2>
+                </div>
+                <div className="relative">
+                    {children}
+                </div>
             </div>
-        </div>
+            <div
+                onMouseDown={(e) => startResize(e, 'top')}
+                className="absolute top-0 left-0 right-0 h-2 cursor-n-resize"
+                style={{ transform: 'translateY(-1px)' }}
+                title="Resize"
+            />
+            <div
+                onMouseDown={(e) => startResize(e, 'bottom')}
+                className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize"
+                style={{ transform: 'translateY(1px)' }}
+                title="Resize"
+            />
+            <div
+                onMouseDown={(e) => startResize(e, 'left')}
+                className="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize"
+                style={{ transform: 'translateX(-1px)' }}
+                title="Resize"
+            />
+            <div
+                onMouseDown={(e) => startResize(e, 'right')}
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize"
+                style={{ transform: 'translateX(1px)' }}
+                title="Resize"
+            />
+            {overlay && (
+                <div className="absolute inset-0 z-10 pointer-events-none">
+                    {overlay}
+                </div>
+            )}
+        </motion.div>
     );
-}
+};
 
 // Displays a navigation arrowhead
 const ArrowHead = ({ left, disabled }: { left: boolean, disabled: boolean }) => {
     return (
-        <i
+        <motion.i
             style={{
-                borderColor: disabled ? "#D1D5DB" : "#2563EB", // Using valid CSS hex colors
+                borderColor: disabled ? "#D1D5DB" : "#6366F1",
                 borderStyle: "solid",
                 borderWidth: "0 3px 3px 0",
                 display: "inline-block",
                 padding: "3px",
                 transform: `rotate(${left ? "135deg" : "-45deg"})`,
             }}
+            whileHover={!disabled ? { x: left ? -3 : 3 } : {}}
+            transition={{ type: "spring", stiffness: 500 }}
         />
     );
 }
 
 // Main dialog that appears when creating a space
 const ConnectionDialog = ({ activeConnections, close }: { activeConnections: MantisConnection[], close: () => void }) => {
+    const [showInitialText, setShowInitialText] = useState(true);
     const [state, setState] = useState<GenerationProgress>(GenerationProgress.GATHERING_DATA); // Progress of creation process
     const [errorText, setErrorText] = useState<string | null>(null);
     const [running, setRunning] = useState(false); // If the creation process is running
@@ -92,6 +317,45 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
     const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
 
     const logContainerRef = useRef<HTMLDivElement>(null);
+    const [showOverlay, setShowOverlay] = useState(true);
+
+    const overlayElement = (
+        <AnimatePresence>
+            {showOverlay && (
+                <motion.div
+                    className="absolute inset-0 rounded-2xl bg-white flex items-center justify-center"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: [1, 1, 0] }}
+                    transition={{ duration: 2, times: [0, 0.85, 1], ease: "easeInOut" }}
+                    onAnimationComplete={() => setShowOverlay(false)}
+                >
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="flex flex-col items-center"
+                    >
+                        <motion.img
+                            src={faviconIco}
+                            alt="MantisAI"
+                            className="w-16 h-16 mb-3"
+                            initial={{ rotate: -180 }}
+                            animate={{ rotate: 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                        />
+                        <motion.h2
+                            className="text-3xl font-extrabold text-black tracking-wide"
+                            initial={{ y: 10, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                        >
+                            MantisAI
+                        </motion.h2>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
     
     // Check if the log scroll is at the bottom
     const isScrolledToBottom = () => {
@@ -114,7 +378,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     const establishLogSocket = (space_id: string) => {
         const backendApiUrl = new URL(process.env.PLASMO_PUBLIC_MANTIS_API);
-        const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
+            const isLocalhost = backendApiUrl.hostname.includes('localhost') || backendApiUrl.hostname.includes('127.0.0.1');
         const baseWsUrl = isLocalhost
             ? process.env.PLASMO_PUBLIC_MANTIS_API.replace('http://', 'ws://').replace('https://', 'ws://')
             : process.env.PLASMO_PUBLIC_MANTIS_API.replace('https://', 'wss://');
@@ -276,8 +540,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     if (state === GenerationProgress.COMPLETED) {
         return (
-            <DialogHeader>
-                <CloseButton close={close} />
+            <DialogHeader overlay={overlayElement} close={close}>
                 {connectionData}
                 <div className="mt-4 flex flex-col items-center space-y-4">
                     <p className="text-green-600 font-semibold">
@@ -317,61 +580,108 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     if (state === GenerationProgress.FAILED) {
         return (
-            <DialogHeader>
-                <CloseButton close={close} />
-                {connectionData}
-                <div className="text-red-500">{errorText}</div>
-                <button
-                    className="w-full bg-gradient-to-r from-red-500 to-red-700 text-white py-2 px-4 rounded hover:opacity-90 transition-opacity"
-                    onClick={close}
-                >
-                    Close
-                </button>
+            <DialogHeader overlay={overlayElement} close={close}>
+                    {connectionData}
+                    <div className="text-red-500">{errorText}</div>
+                    <button
+                        className="w-full bg-gradient-to-r from-red-500 to-red-700 text-white py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
+                        onClick={close}
+                    >
+                        Close
+                    </button>
             </DialogHeader>
         );
     }
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowInitialText(false);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, []);
+
     if (running) {
         return (
-            <DialogHeader>
-                {connectionData}
-                {state !== GenerationProgress.CREATING_SPACE ? 
-                // Raw progress bar with no logs
-                (<div className="flex flex-col items-center space-y-2">
-                    <div className="w-full bg-gray-300 rounded-full h-4">
-                        <div
-                            className="bg-blue-500 h-4 rounded-full transition-all duration-500 animate-pulse"
-                            style={{ width: `${progressPercent * 100}%` }}
-                        />
-                    </div>
-                    <span className="text-sm font-medium text-blue-600">{state}</span>
-                </div>) 
-                
-                // Progress bar + logs
-                : (<div className="flex flex-col items-center space-y-4">
-                    <div className="w-full">
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-xs font-medium text-blue-600">{state}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div
-                                className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
-                                style={{ width: `${progressPercent * 100}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="w-full mt-4 border rounded-lg overflow-hidden">
-                        <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b">
-                            <span className="font-medium">Log Messages</span>
-                            <div className="flex items-center">
-                                <span className={`w-2 h-2 rounded-full mr-2 ${WSStatus === 'connected' ? 'bg-green-500' :
-                                        WSStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}></span>
-                                <span className="text-xs text-gray-500">{WSStatus}</span>
+            <AnimatePresence mode="wait">
+                {showInitialText ? (
+                    <motion.div
+                        key="initial-text"
+                        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[9999]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <motion.h1 
+                            className="text-5xl font-bold text-center bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ 
+                                type: "spring",
+                                damping: 10,
+                                stiffness: 100,
+                                delay: 0.1
+                            }}
+                        >
+                            MantisAI
+                        </motion.h1>
+                    </motion.div>
+                ) : (
+                    <DialogHeader key="dialog" overlay={overlayElement} close={close}>
+                        {connectionData}
+                        
+                        {state !== GenerationProgress.CREATING_SPACE ? (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-2xl font-bold">Create New Space</h2>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => setConnectionIdx(prev => Math.max(0, prev - 1))}
+                                            disabled={connectionIdx === 0}
+                                            className={`p-2 rounded-full ${connectionIdx === 0 ? 'text-gray-300' : 'text-blue-500 hover:bg-blue-50'}`}
+                                        >
+                                            <ArrowHead left={true} disabled={connectionIdx === 0} />
+                                        </button>
+                                        <button
+                                            onClick={() => setConnectionIdx(prev => Math.min(activeConnections.length - 1, prev + 1))}
+                                            disabled={connectionIdx === activeConnections.length - 1}
+                                            className={`p-2 rounded-full ${connectionIdx === activeConnections.length - 1 ? 'text-gray-300' : 'text-blue-500 hover:bg-blue-50'}`}
+                                        >
+                                            <ArrowHead left={false} disabled={connectionIdx === activeConnections.length - 1} />
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-blue-100 rounded-xl">
+                                            <img src={activeConnections[connectionIdx].icon} alt={activeConnections[connectionIdx].name} className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg">{activeConnections[connectionIdx].name}</h3>
+                                            <p className="text-sm text-gray-500">{activeConnections[connectionIdx].description}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="pt-4">
+                                        <button
+                                            onClick={() => runConnection(activeConnections[connectionIdx])}
+                                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
+                                        >
+                                            <span>Create Space</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-2xl font-bold">Creating Space</h2>
+                                        <div className="text-sm text-gray-500">
+                                            {Progression.indexOf(state) + 1} of {Progression.length} steps
+                                        </div>
+                                    </div>
                         <div className="max-h-48 overflow-y-auto p-3 bg-gray-50 font-mono text-sm" ref={logContainerRef}>
                             {logMessages.length === 0 ? (
                                 <div className="text-center text-gray-400 py-2">No log messages yet</div>
@@ -393,16 +703,17 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                                     </div>
                                 ))
                             )}
-                        </div>
-                    </div>
+                                </div>
+                            </div>
                 </div>)}
-            </DialogHeader>
+                    </DialogHeader>
+                )}
+            </AnimatePresence>
         );
     }
 
     return (
-        <DialogHeader>
-            <CloseButton close={close} />
+        <DialogHeader overlay={overlayElement} close={close}>
             <div style={{ height: "20px" }} />
             {activeConnections.length > 1 && (
                 <div className="bg-white flex items-center justify-between mb-4">
@@ -454,7 +765,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                 onClick={() => runConnection(activeConnection)}
                 disabled={!isAuthenticated}
             >
-                <span>Create</span>
+                <span>Create Space</span>
                 <span className="animate-pulse">✨</span>
             </button>
         </DialogHeader>
@@ -521,10 +832,10 @@ const PlasmoFloatingButton = () => {
     return (
         <>
             <button
-                className="fixed bottom-[30px] right-[30px] w-20 h-20 rounded-full bg-white text-white shadow-[0_0_20px_rgba(0,0,0,0.15)] cursor-pointer flex items-center justify-center transition duration-300 ease-in-out hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] hover:scale-105"
+                className="fixed bottom-[30px] right-[30px] w-20 h-20 rounded-full bg-white text-white shadow-[0_0_20px_rgba(0,0,0,0.15)] cursor-pointer flex items-center justify-center transition duration-300 ease-in-out hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] hover:scale-105 z-[10000]"
                 onClick={() => setOpen(true)}
             >
-                <img className="h-[80%]" src={faviconIco} />
+                <img className="h-[80%]" src={faviconIco} alt="MantisAI" />
             </button>
             {open && (
                 <ConnectionDialog activeConnections={activeConnections} close={() => setOpen(false)} />
