@@ -232,7 +232,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
                     >
                         <img 
                             src={faviconIco} 
-                            alt="MantisAI" 
+                            alt="Mantis" 
                             className="w-10 h-10"
                         />
                     </motion.div>
@@ -242,7 +242,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
                     >
-                        MantisAI
+                        Mantis
                     </motion.h2>
                 </div>
                 <div className="relative">
@@ -335,7 +335,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                     >
                         <motion.img
                             src={faviconIco}
-                            alt="MantisAI"
+                            alt="Mantis"
                             className="w-16 h-16 mb-3"
                             initial={{ rotate: -180 }}
                             animate={{ rotate: 0 }}
@@ -347,7 +347,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
                         >
-                            MantisAI
+                            Mantis
                         </motion.h2>
                     </motion.div>
                 </motion.div>
@@ -621,7 +621,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                                 delay: 0.1
                             }}
                         >
-                            MantisAI
+                            Mantis
                         </motion.h1>
                     </motion.div>
                 ) : (
@@ -833,7 +833,7 @@ const PlasmoFloatingButton = () => {
                 className="fixed bottom-[30px] right-[30px] w-20 h-20 rounded-full bg-white text-white shadow-[0_0_20px_rgba(0,0,0,0.15)] cursor-pointer flex items-center justify-center transition duration-300 ease-in-out hover:shadow-[0_0_20px_rgba(0,0,0,0.3)] hover:scale-105 z-[10000]"
                 onClick={() => setOpen(true)}
             >
-                <img className="h-[80%]" src={faviconIco} alt="MantisAI" />
+                <img className="h-[80%]" src={faviconIco} alt="Mantis" />
             </button>
             {open && (
                 <ConnectionDialog activeConnections={activeConnections} close={() => setOpen(false)} />
