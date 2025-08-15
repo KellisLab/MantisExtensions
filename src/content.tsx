@@ -55,7 +55,7 @@ const CloseButton = ({ close }: { close: () => void }) => {
 };
 
 // Dialog util
-const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode, overlay?: React.ReactNode, close?: () => void }) => {
+const DialogPanel = ({ children, overlay, close }: { children: React.ReactNode, overlay?: React.ReactNode, close?: () => void }) => {
     const [panelSize, setPanelSize] = React.useState<{ width: number; height: number }>({ width: 550, height: 330 });
     const resizingRef = React.useRef<{
         startX: number;
@@ -121,7 +121,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
         if (resizingRef.current.edge === 'left' || resizingRef.current.edge === 'top') {
             setPos({ left: newLeft, top: newTop });
         }
-    }, []);
+    }, [pos]);
 
     const endResize = React.useCallback(() => {
         if (!resizingRef.current) return;
@@ -129,7 +129,7 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', endResize);
         document.body.style.cursor = '';
-        (document.body.style as any).userSelect = '';
+        document.body.style.userSelect = '';
     }, [onMouseMove]);
 
     const startResize = React.useCallback((e: React.MouseEvent, edge: 'top'|'right'|'bottom'|'left') => {
@@ -195,6 +195,27 @@ const DialogHeader = ({ children, overlay, close }: { children: React.ReactNode,
         e.preventDefault();
         e.stopPropagation();
     }, [pos.top, pos.left, onDragMove, endDrag]);
+
+    React.useEffect(() => {
+        const handleResize = () => {
+            const minMargin = 4;
+            const newLeft = Math.max(minMargin, Math.min(
+                window.innerWidth - panelSize.width - minMargin,
+                pos.left
+            ));
+            const newTop = Math.max(minMargin, Math.min(
+                window.innerHeight - panelSize.height - minMargin,
+                pos.top
+            ));
+            
+            if (newLeft !== pos.left || newTop !== pos.top) {
+                setPos({ left: newLeft, top: newTop });
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [panelSize.width, panelSize.height, pos.left, pos.top]);
 
     React.useEffect(() => () => endDrag(), [endDrag]);
 
@@ -545,7 +566,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
 
     if (state === GenerationProgress.COMPLETED) {
         return (
-            <DialogHeader overlay={overlayElement} close={close}>
+            <DialogPanel overlay={overlayElement} close={close}>
                 {connectionData}
                 <div className="mt-4 flex flex-col items-center space-y-4">
                     <p className="text-green-600 font-semibold">
@@ -579,13 +600,13 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                         </button>
                     </div>
                 </div>
-            </DialogHeader>
+            </DialogPanel>
         );
     }
 
     if (state === GenerationProgress.FAILED) {
         return (
-            <DialogHeader overlay={overlayElement} close={close}>
+            <DialogPanel overlay={overlayElement} close={close}>
                     {connectionData}
                     <div className="text-red-500">{errorText}</div>
                     <button
@@ -594,7 +615,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                     >
                         Close
                     </button>
-            </DialogHeader>
+            </DialogPanel>
         );
     }
 
@@ -625,7 +646,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                         </motion.h1>
                     </motion.div>
                 ) : (
-                    <DialogHeader key="dialog" overlay={overlayElement} close={close}>
+                    <DialogPanel key="dialog" overlay={overlayElement} close={close}>
                         {connectionData}
                         
                         {state !== GenerationProgress.CREATING_SPACE ? (
@@ -704,14 +725,14 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                                 </div>
                             </div>
                 </div>)}
-                    </DialogHeader>
+                    </DialogPanel>
                 )}
             </AnimatePresence>
         );
     }
 
     return (
-        <DialogHeader overlay={overlayElement} close={close}>
+        <DialogPanel overlay={overlayElement} close={close}>
             <div style={{ height: "20px" }} />
             {activeConnections.length > 1 && (
                 <div className="bg-white flex items-center justify-between mb-4">
@@ -766,7 +787,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                 <span>Create Space</span>
                 <span className="animate-pulse">✨</span>
             </button>
-        </DialogHeader>
+        </DialogPanel>
     );
 };
 
