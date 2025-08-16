@@ -16,6 +16,7 @@
     "acorn-walk": "^8.3.4",
     "d3-array": "^3.2.4",
     "escodegen": "^2.1.0",
+    "framer-motion": "^12.23.12",
     "plasmo": "0.89.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
