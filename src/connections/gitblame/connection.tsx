@@ -38,7 +38,21 @@ async function isRepositoryPublic(owner: string, repo: string): Promise<boolean>
     try {
         // Try to access the repository without authentication
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-        return response.status === 200;
+        
+        // Check if we got a valid JSON response
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.warn('GitHub API returned non-JSON response, assuming private repository');
+            return false;
+        }
+        
+        if (response.status === 200) {
+            const data = await response.json();
+            // Check if the repository is actually public
+            return !data.private;
+        }
+        
+        return false;
     } catch (error) {
         console.warn('Could not determine repository visibility:', error);
         return false; // Assume private if we can't determine
@@ -158,6 +172,9 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         // For public repos, we can work without authentication
         console.log('Repository is public, proceeding without authentication');
         octokit = new Octokit();
+        
+        // However, some GitHub API operations (like GraphQL) may still require authentication
+        // We'll try without auth first, but fall back to asking for a token if needed
     } else {
         // For private repos, we need authentication
         console.log('Repository is private, authentication required');
@@ -189,6 +206,61 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     try {
         // Get file blame information
         const blameData = await getFileBlame(octokit, owner, repo, filePath, branch);
+        
+        // If we got no blame data and we're using an unauthenticated client, 
+        // it might be because GraphQL requires authentication
+        if (blameData.length === 0 && !githubToken) {
+            console.log('No blame data received, this might require authentication. Prompting for token...');
+            
+            // Ask for a token even for public repos if GraphQL operations fail
+            const fallbackToken = await promptForGitHubToken();
+            if (fallbackToken) {
+                const isValid = await validateGitHubToken(fallbackToken);
+                if (isValid) {
+                    await saveGitHubToken(fallbackToken);
+                    const authenticatedOctokit = new Octokit({ auth: fallbackToken });
+                    const retryBlameData = await getFileBlame(authenticatedOctokit, owner, repo, filePath, branch);
+                    
+                    if (retryBlameData.length > 0) {
+                        console.log('Successfully retrieved blame data with authentication');
+                        // Use the authenticated data
+                        const extractedData = retryBlameData.map(entry => ({
+                            filename: entry.filename,
+                            lineNumber: entry.lineNumber,
+                            commit: entry.commit,
+                            author: entry.author,
+                            date: entry.date,
+                            lineContent: entry.lineContent,
+                            repository: `${owner}/${repo}`,
+                            branch: branch
+                        }));
+                        
+                        // Continue with the authenticated data...
+                        setProgress(GenerationProgress.CREATING_SPACE);
+                        
+                        const spaceData = await reqSpaceCreation(extractedData, {
+                            "filename": "text",
+                            "lineNumber": "number",
+                            "commit": "text",
+                            "author": "text",
+                            "date": "date",
+                            "lineContent": "semantic",
+                            "repository": "text",
+                            "branch": "text"
+                        }, establishLogSocket, `GitBlame: ${owner}/${repo}/${filePath}`);
+                        
+                        setProgress(GenerationProgress.INJECTING_UI);
+                        
+                        const spaceId = spaceData.space_id;
+                        const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
+                        
+                        setProgress(GenerationProgress.COMPLETED);
+                        
+                        return { spaceId, createdWidget };
+                    }
+                }
+            }
+        }
         
         // Get additional repository information
         const repoInfo = await getRepositoryInfo(octokit, owner, repo);
@@ -245,6 +317,12 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
     } catch (error) {
         console.error('Error creating GitBlame space:', error);
+        
+        // Provide more helpful error messages
+        if (error.message && error.message.includes('Unexpected token')) {
+            throw new Error('GitHub API returned an invalid response. This usually means authentication is required. Please provide a valid GitHub Personal Access Token.');
+        }
+        
         throw error;
     }
 }
@@ -290,9 +368,21 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
             octokit.rest.repos.getContent({ owner, repo, path, ref: branch })
         ]);
         
-        // Type the GraphQL response properly
+        // Type the GraphQL response properly and validate it's not HTML
         const typedResponse = response as any;
-        const blameData = typedResponse.repository?.object?.blame?.ranges || [];
+        
+        // Check if we got a valid response structure
+        if (!typedResponse || typeof typedResponse !== 'object') {
+            console.warn('Invalid GraphQL response structure:', typedResponse);
+            return [];
+        }
+        
+        if (!typedResponse.repository || !typedResponse.repository.object) {
+            console.warn('Repository or object not found in GraphQL response');
+            return [];
+        }
+        
+        const blameData = typedResponse.repository.object.blame?.ranges || [];
 
         if (Array.isArray(fileContentResponse.data)) {
             // This shouldn't happen for a file path, but handle it
@@ -334,6 +424,12 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
         
     } catch (error) {
         console.warn(`Could not get blame for ${path}:`, error);
+        
+        // Check if the error is due to authentication issues
+        if (error.message && error.message.includes('Unexpected token')) {
+            console.warn('This appears to be an authentication issue. Please provide a valid GitHub token.');
+        }
+        
         return [];
     }
 }
