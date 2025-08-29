@@ -1,7 +1,7 @@
 import type { MantisConnection, injectUIType, onMessageType, registerListenersType, setProgressType, establishLogSocketType } from "../types";
 import { GenerationProgress } from "../types";
 import { Octokit } from "@octokit/rest";
-import { saveGitHubToken, getGitHubToken, hasGitHubToken } from "../../github-token-manager";
+import { saveGitHubToken, getGitHubToken } from "../../github-token-manager";
 
 import githubIcon from "data-base64:../../../assets/github.svg";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
@@ -31,6 +31,18 @@ type GitHubBlameRange = {
 
 const trigger = (url: string) => {
     return url.includes("github.com") && url.includes("/blob/");
+}
+
+// Check if a repository is public (no authentication required)
+async function isRepositoryPublic(owner: string, repo: string): Promise<boolean> {
+    try {
+        // Try to access the repository without authentication
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+        return response.status === 200;
+    } catch (error) {
+        console.warn('Could not determine repository visibility:', error);
+        return false; // Assume private if we can't determine
+    }
 }
 
 // Add this function to handle token input
@@ -67,27 +79,6 @@ async function validateGitHubToken(token: string): Promise<boolean> {
 const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
-    // Check if user has a GitHub token
-    let githubToken = await getGitHubToken();
-    
-    if (!githubToken) {
-        // Prompt user for token
-        githubToken = await promptForGitHubToken();
-        
-        if (!githubToken) {
-            throw new Error('GitHub Personal Access Token is required to use the GitBlame connection.');
-        }
-        
-        // Validate the token
-        const isValid = await validateGitHubToken(githubToken);
-        if (!isValid) {
-            throw new Error('Invalid GitHub Personal Access Token. Please check your token and try again.');
-        }
-        
-        // Save the valid token
-        await saveGitHubToken(githubToken);
-    }
-
     // Extract repository information from the URL more robustly
     const url = new URL(window.location.href);
     const pathParts = url.pathname.split('/');
@@ -103,18 +94,42 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     if (branchMeta) {
         branch = branchMeta.getAttribute('content') || "main";
     } else {
-        // Fallback to URL parsing, but handle branch names with slashes
+        // Fallback to URL parsing, but handle branch names with slashes more intelligently
         const blobIndex = pathParts.indexOf('blob');
         if (blobIndex !== -1 && blobIndex + 1 < pathParts.length) {
-            // The part after 'blob' could be the branch or part of the file path
-            // We need to determine where the branch ends and file path begins
             const afterBlob = pathParts.slice(blobIndex + 1);
             
-            // Try to find a reasonable split point
             if (afterBlob.length >= 2) {
-                // Assume first part is branch, rest is file path
-                branch = afterBlob[0];
-                filePath = afterBlob.slice(1).join('/');
+                // For better branch detection, we need to be smarter about where the branch ends
+                // GitHub URLs typically have the pattern: /owner/repo/blob/branch/path/to/file
+                // But branch names can contain slashes, so we need to find the right split point
+                
+                // Try to find the file extension to determine where the file path starts
+                let filePathStartIndex = 0;
+                for (let i = 0; i < afterBlob.length; i++) {
+                    const part = afterBlob[i];
+                    // If this part contains a file extension, it's likely part of the file path
+                    if (part.includes('.') && !part.includes('/')) {
+                        filePathStartIndex = i;
+                        break;
+                    }
+                    // If this part looks like a commit hash (40+ hex chars), it's likely a commit, not a branch
+                    if (/^[a-f0-9]{40,}$/.test(part)) {
+                        filePathStartIndex = i;
+                        break;
+                    }
+                }
+                
+                if (filePathStartIndex > 0) {
+                    // We found a likely file path start, everything before is the branch
+                    branch = afterBlob.slice(0, filePathStartIndex).join('/');
+                    filePath = afterBlob.slice(filePathStartIndex).join('/');
+                } else {
+                    // Fallback: assume first part is branch, rest is file path
+                    // This handles cases like "feature/new-feature" as branch name
+                    branch = afterBlob[0];
+                    filePath = afterBlob.slice(1).join('/');
+                }
             } else if (afterBlob.length === 1) {
                 // Only one part after blob, assume it's the branch
                 branch = afterBlob[0];
@@ -133,10 +148,43 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
     console.log(`Processing repository: ${owner}/${repo}, branch: ${branch}, file: ${filePath}`);
 
-    // Initialize Octokit with user's token
-    const octokit = new Octokit({
-        auth: githubToken
-    });
+    // Check if repository is public first
+    const isPublic = await isRepositoryPublic(owner, repo);
+    
+    let githubToken: string | undefined;
+    let octokit: Octokit;
+    
+    if (isPublic) {
+        // For public repos, we can work without authentication
+        console.log('Repository is public, proceeding without authentication');
+        octokit = new Octokit();
+    } else {
+        // For private repos, we need authentication
+        console.log('Repository is private, authentication required');
+        
+        // Check if user has a GitHub token
+        githubToken = await getGitHubToken();
+        
+        if (!githubToken) {
+            // Prompt user for token
+            githubToken = await promptForGitHubToken();
+            
+            if (!githubToken) {
+                throw new Error('GitHub Personal Access Token is required for private repositories.');
+            }
+            
+            // Validate the token
+            const isValid = await validateGitHubToken(githubToken);
+            if (!isValid) {
+                throw new Error('Invalid GitHub Personal Access Token. Please check your token and try again.');
+            }
+            
+            // Save the valid token
+            await saveGitHubToken(githubToken);
+        }
+        
+        octokit = new Octokit({ auth: githubToken });
+    }
 
     try {
         // Get file blame information
@@ -236,9 +284,29 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
             ref: branch
         };
 
-        // Make GraphQL request using Octokit
-        const response = await octokit.graphql(query, variables);
-        const blameData = response.repository?.object?.blame?.ranges || [];
+        // Make GraphQL request and get file content in parallel
+        const [response, fileContentResponse] = await Promise.all([
+            octokit.graphql(query, variables),
+            octokit.rest.repos.getContent({ owner, repo, path, ref: branch })
+        ]);
+        
+        // Type the GraphQL response properly
+        const typedResponse = response as any;
+        const blameData = typedResponse.repository?.object?.blame?.ranges || [];
+
+        if (Array.isArray(fileContentResponse.data)) {
+            // This shouldn't happen for a file path, but handle it
+            return [];
+        }
+
+        // Check if it's a file (not a symlink or submodule)
+        if (fileContentResponse.data.type !== 'file') {
+            console.warn(`Path ${path} is not a file (type: ${fileContentResponse.data.type})`);
+            return [];
+        }
+
+        const content = Buffer.from(fileContentResponse.data.content, 'base64').toString('utf-8');
+        const lines = content.split('\n');
 
         // Convert GraphQL response to our format
         const result: BlameMapEntry[] = [];
@@ -246,47 +314,16 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
         for (const range of blameData) {
             const { startingLine, endingLine, commit } = range;
             
-            // Get the actual file content for these lines
-            try {
-                const fileContent = await octokit.rest.repos.getContent({
-                    owner,
-                    repo,
-                    path,
-                    ref: commit.oid
-                });
-
-                if (Array.isArray(fileContent.data)) {
-                    // This shouldn't happen for a file path, but handle it
-                    continue;
-                }
-
-                const content = Buffer.from(fileContent.data.content, 'base64').toString('utf-8');
-                const lines = content.split('\n');
-
-                // Add each line in the range
-                for (let lineNum = startingLine; lineNum <= endingLine; lineNum++) {
-                    if (lineNum > 0 && lineNum <= lines.length) {
-                        result.push({
-                            filename: path,
-                            lineNumber: lineNum,
-                            commit: commit.oid,
-                            author: commit.author?.name,
-                            date: commit.author?.date,
-                            lineContent: lines[lineNum - 1] || ''
-                        });
-                    }
-                }
-            } catch (error) {
-                console.warn(`Could not get content for commit ${commit.oid}:`, error);
-                // Fallback: add entry without line content
-                for (let lineNum = startingLine; lineNum <= endingLine; lineNum++) {
+            // Add each line in the range
+            for (let lineNum = startingLine; lineNum <= endingLine; lineNum++) {
+                if (lineNum > 0 && lineNum <= lines.length) {
                     result.push({
                         filename: path,
                         lineNumber: lineNum,
                         commit: commit.oid,
                         author: commit.author?.name,
                         date: commit.author?.date,
-                        lineContent: `[Line ${lineNum} - content unavailable]`
+                        lineContent: lines[lineNum - 1] || ''
                     });
                 }
             }
