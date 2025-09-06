@@ -30,7 +30,7 @@ type GitHubBlameRange = {
 };
 
 const trigger = (url: string) => {
-    return url.includes("github.com") && url.includes("/blob/");
+    return url.includes("github.com") && (url.includes("/blob/") || url.includes("/pull/"));
 }
 
 // Check if a repository is public (no authentication required)
@@ -47,9 +47,26 @@ async function isRepositoryPublic(owner: string, repo: string): Promise<boolean>
         }
         
         if (response.status === 200) {
-            const data = await response.json();
-            // Check if the repository is actually public
-            return !data.private;
+            try {
+                const data = await response.json();
+                // Check if the repository is actually public
+                return !data.private;
+            } catch (jsonError) {
+                console.warn('Failed to parse JSON response:', jsonError);
+                return false;
+            }
+        }
+        
+        // If we get a 404, the repo might not exist or be private
+        if (response.status === 404) {
+            console.warn('Repository not found, assuming private');
+            return false;
+        }
+        
+        // If we get rate limited or other errors, assume private
+        if (response.status === 403 || response.status === 429) {
+            console.warn('GitHub API rate limited or forbidden, assuming private');
+            return false;
         }
         
         return false;
@@ -103,51 +120,90 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     let branch = "main";
     let filePath = "";
     
-    // Look for branch name in meta tags first (more reliable)
-    const branchMeta = document.querySelector('meta[name="branch-name"]');
-    if (branchMeta) {
-        branch = branchMeta.getAttribute('content') || "main";
+    // Check if this is a PR page
+    const isPR = pathParts.includes('pull');
+    const prIndex = pathParts.indexOf('pull');
+    
+    if (isPR && prIndex !== -1 && prIndex + 1 < pathParts.length) {
+        // This is a PR page - extract PR number and get the head branch
+        const prNumber = pathParts[prIndex + 1];
+        console.log(`Processing PR #${prNumber} for ${owner}/${repo}`);
+        
+        // For PR pages, we need to get the head branch from the PR data
+        // We'll try to extract it from the page or use a fallback
+        const prBranchMeta = document.querySelector('meta[name="pr-head-branch"]');
+        if (prBranchMeta) {
+            branch = prBranchMeta.getAttribute('content') || "main";
+        } else {
+            // Fallback: try to get branch from the page content
+            const branchElement = document.querySelector('[data-testid="head-ref"]') || 
+                                 document.querySelector('.head-ref') ||
+                                 document.querySelector('[title*="head"]');
+            if (branchElement) {
+                branch = branchElement.textContent?.trim() || "main";
+            }
+        }
+        
+        // For PR pages, we need to determine the file path differently
+        // Check if we're viewing a specific file in the PR
+        const filePathMeta = document.querySelector('meta[name="file-path"]');
+        if (filePathMeta) {
+            filePath = filePathMeta.getAttribute('content') || "";
+        } else {
+            // Try to extract from URL if it's a file view in PR
+            const filesIndex = pathParts.indexOf('files');
+            if (filesIndex !== -1 && filesIndex + 1 < pathParts.length) {
+                filePath = pathParts.slice(filesIndex + 1).join('/');
+            }
+        }
     } else {
-        // Fallback to URL parsing, but handle branch names with slashes more intelligently
-        const blobIndex = pathParts.indexOf('blob');
-        if (blobIndex !== -1 && blobIndex + 1 < pathParts.length) {
-            const afterBlob = pathParts.slice(blobIndex + 1);
-            
-            if (afterBlob.length >= 2) {
-                // For better branch detection, we need to be smarter about where the branch ends
-                // GitHub URLs typically have the pattern: /owner/repo/blob/branch/path/to/file
-                // But branch names can contain slashes, so we need to find the right split point
+        // This is a regular blob page - use existing logic
+        // Look for branch name in meta tags first (more reliable)
+        const branchMeta = document.querySelector('meta[name="branch-name"]');
+        if (branchMeta) {
+            branch = branchMeta.getAttribute('content') || "main";
+        } else {
+            // Fallback to URL parsing, but handle branch names with slashes more intelligently
+            const blobIndex = pathParts.indexOf('blob');
+            if (blobIndex !== -1 && blobIndex + 1 < pathParts.length) {
+                const afterBlob = pathParts.slice(blobIndex + 1);
                 
-                // Try to find the file extension to determine where the file path starts
-                let filePathStartIndex = 0;
-                for (let i = 0; i < afterBlob.length; i++) {
-                    const part = afterBlob[i];
-                    // If this part contains a file extension, it's likely part of the file path
-                    if (part.includes('.') && !part.includes('/')) {
-                        filePathStartIndex = i;
-                        break;
+                if (afterBlob.length >= 2) {
+                    // For better branch detection, we need to be smarter about where the branch ends
+                    // GitHub URLs typically have the pattern: /owner/repo/blob/branch/path/to/file
+                    // But branch names can contain slashes, so we need to find the right split point
+                    
+                    // Try to find the file extension to determine where the file path starts
+                    let filePathStartIndex = 0;
+                    for (let i = 0; i < afterBlob.length; i++) {
+                        const part = afterBlob[i];
+                        // If this part contains a file extension, it's likely part of the file path
+                        if (part.includes('.') && !part.includes('/')) {
+                            filePathStartIndex = i;
+                            break;
+                        }
+                        // If this part looks like a commit hash (40+ hex chars), it's likely a commit, not a branch
+                        if (/^[a-f0-9]{40,}$/.test(part)) {
+                            filePathStartIndex = i;
+                            break;
+                        }
                     }
-                    // If this part looks like a commit hash (40+ hex chars), it's likely a commit, not a branch
-                    if (/^[a-f0-9]{40,}$/.test(part)) {
-                        filePathStartIndex = i;
-                        break;
+                    
+                    if (filePathStartIndex > 0) {
+                        // We found a likely file path start, everything before is the branch
+                        branch = afterBlob.slice(0, filePathStartIndex).join('/');
+                        filePath = afterBlob.slice(filePathStartIndex).join('/');
+                    } else {
+                        // Fallback: assume first part is branch, rest is file path
+                        // This handles cases like "feature/new-feature" as branch name
+                        branch = afterBlob[0];
+                        filePath = afterBlob.slice(1).join('/');
                     }
-                }
-                
-                if (filePathStartIndex > 0) {
-                    // We found a likely file path start, everything before is the branch
-                    branch = afterBlob.slice(0, filePathStartIndex).join('/');
-                    filePath = afterBlob.slice(filePathStartIndex).join('/');
-                } else {
-                    // Fallback: assume first part is branch, rest is file path
-                    // This handles cases like "feature/new-feature" as branch name
+                } else if (afterBlob.length === 1) {
+                    // Only one part after blob, assume it's the branch
                     branch = afterBlob[0];
-                    filePath = afterBlob.slice(1).join('/');
+                    filePath = "";
                 }
-            } else if (afterBlob.length === 1) {
-                // Only one part after blob, assume it's the branch
-                branch = afterBlob[0];
-                filePath = "";
             }
         }
     }
@@ -204,11 +260,45 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     }
 
     try {
-        // Get file blame information
-        const blameData = await getFileBlame(octokit, owner, repo, filePath, branch);
+        // Get file blame information with better error handling
+        let blameData: BlameMapEntry[] = [];
         
-        // If we got no blame data and we're using an unauthenticated client, 
-        // it might be because GraphQL requires authentication
+        try {
+            blameData = await getFileBlame(octokit, owner, repo, filePath, branch);
+        } catch (blameError) {
+            console.warn('Failed to get blame data:', blameError);
+            
+            // If we get JSON parsing errors, it's likely an authentication issue
+            if (blameError.message && (blameError.message.includes('Unexpected token') || blameError.message.includes('<html>'))) {
+                console.log('Detected authentication issue, prompting for token...');
+                
+                // Ask for a token
+                const fallbackToken = await promptForGitHubToken();
+                if (fallbackToken) {
+                    const isValid = await validateGitHubToken(fallbackToken);
+                    if (isValid) {
+                        await saveGitHubToken(fallbackToken);
+                        const authenticatedOctokit = new Octokit({ auth: fallbackToken });
+                        
+                        try {
+                            blameData = await getFileBlame(authenticatedOctokit, owner, repo, filePath, branch);
+                            console.log('Successfully retrieved blame data with authentication');
+                        } catch (retryError) {
+                            console.error('Failed to get blame data even with authentication:', retryError);
+                            throw new Error('Unable to retrieve blame data. Please check your GitHub token permissions.');
+                        }
+                    } else {
+                        throw new Error('Invalid GitHub token. Please check your token and try again.');
+                    }
+                } else {
+                    throw new Error('GitHub Personal Access Token is required for this repository.');
+                }
+            } else {
+                throw blameError;
+            }
+        }
+        
+        // If we still have no blame data, try one more time with authentication
         if (blameData.length === 0 && !githubToken) {
             console.log('No blame data received, this might require authentication. Prompting for token...');
             
@@ -219,46 +309,23 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
                 if (isValid) {
                     await saveGitHubToken(fallbackToken);
                     const authenticatedOctokit = new Octokit({ auth: fallbackToken });
-                    const retryBlameData = await getFileBlame(authenticatedOctokit, owner, repo, filePath, branch);
                     
-                    if (retryBlameData.length > 0) {
-                        console.log('Successfully retrieved blame data with authentication');
-                        // Use the authenticated data
-                        const extractedData = retryBlameData.map(entry => ({
-                            filename: entry.filename,
-                            lineNumber: entry.lineNumber,
-                            commit: entry.commit,
-                            author: entry.author,
-                            date: entry.date,
-                            lineContent: entry.lineContent,
-                            repository: `${owner}/${repo}`,
-                            branch: branch
-                        }));
+                    try {
+                        const retryBlameData = await getFileBlame(authenticatedOctokit, owner, repo, filePath, branch);
                         
-                        // Continue with the authenticated data...
-                        setProgress(GenerationProgress.CREATING_SPACE);
-                        
-                        const spaceData = await reqSpaceCreation(extractedData, {
-                            "filename": "text",
-                            "lineNumber": "number",
-                            "commit": "text",
-                            "author": "text",
-                            "date": "date",
-                            "lineContent": "semantic",
-                            "repository": "text",
-                            "branch": "text"
-                        }, establishLogSocket, `GitBlame: ${owner}/${repo}/${filePath}`);
-                        
-                        setProgress(GenerationProgress.INJECTING_UI);
-                        
-                        const spaceId = spaceData.space_id;
-                        const createdWidget = await injectUI(spaceId, onMessage, registerListeners);
-                        
-                        setProgress(GenerationProgress.COMPLETED);
-                        
-                        return { spaceId, createdWidget };
+                        if (retryBlameData.length > 0) {
+                            console.log('Successfully retrieved blame data with authentication');
+                            blameData = retryBlameData;
+                        }
+                    } catch (retryError) {
+                        console.error('Failed to get blame data even with authentication:', retryError);
+                        throw new Error('Unable to retrieve blame data. Please check your GitHub token permissions.');
                     }
+                } else {
+                    throw new Error('Invalid GitHub token. Please check your token and try again.');
                 }
+            } else {
+                throw new Error('GitHub Personal Access Token is required for this repository.');
             }
         }
         
@@ -274,7 +341,9 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             date: entry.date,
             lineContent: entry.lineContent,
             repository: `${owner}/${repo}`,
-            branch: branch
+            branch: branch,
+            isPR: isPR,
+            prNumber: isPR ? pathParts[prIndex + 1] : undefined
         }));
 
         // Add repository metadata
@@ -287,7 +356,9 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
                 date: repoInfo.created_at,
                 lineContent: `Repository: ${repoInfo.full_name}, Description: ${repoInfo.description || 'No description'}, Language: ${repoInfo.language || 'Unknown'}`,
                 repository: `${owner}/${repo}`,
-                branch: branch
+                branch: branch,
+                isPR: isPR,
+                prNumber: isPR ? pathParts[prIndex + 1] : undefined
             });
         }
 
@@ -303,8 +374,10 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             "date": "date",
             "lineContent": "semantic",
             "repository": "text",
-            "branch": "text"
-        }, establishLogSocket, `GitBlame: ${owner}/${repo}/${filePath}`);
+            "branch": "text",
+            "isPR": "boolean",
+            "prNumber": "text"
+        }, establishLogSocket, `GitBlame: ${owner}/${repo}/${filePath}${isPR ? ` (PR #${pathParts[prIndex + 1]})` : ''}`);
 
         setProgress(GenerationProgress.INJECTING_UI);
 
@@ -321,6 +394,10 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         // Provide more helpful error messages
         if (error.message && error.message.includes('Unexpected token')) {
             throw new Error('GitHub API returned an invalid response. This usually means authentication is required. Please provide a valid GitHub Personal Access Token.');
+        }
+        
+        if (error.message && error.message.includes('<html>')) {
+            throw new Error('GitHub API returned an HTML error page. This usually means rate limiting or authentication issues. Please try again later or provide a valid GitHub Personal Access Token.');
         }
         
         throw error;
@@ -368,6 +445,20 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
             octokit.rest.repos.getContent({ owner, repo, path, ref: branch })
         ]);
         
+        // Check if we got HTML error pages instead of JSON
+        if (typeof response === 'string' && response.includes('<html>')) {
+            throw new Error('GitHub API returned an HTML error page. This usually means rate limiting or authentication issues.');
+        }
+        
+        // Check if the response is valid JSON
+        if (typeof response === 'string') {
+            try {
+                JSON.parse(response);
+            } catch (jsonError) {
+                throw new Error('GitHub API returned invalid JSON response. This usually means authentication is required.');
+            }
+        }
+        
         // Type the GraphQL response properly and validate it's not HTML
         const typedResponse = response as any;
         
@@ -393,6 +484,16 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
         if (fileContentResponse.data.type !== 'file') {
             console.warn(`Path ${path} is not a file (type: ${fileContentResponse.data.type})`);
             return [];
+        }
+        
+        // Check if we got HTML error pages instead of file content
+        if (typeof fileContentResponse.data === 'string' && (fileContentResponse.data as string).includes('<html>')) {
+            throw new Error('GitHub API returned an HTML error page when fetching file content. This usually means rate limiting or authentication issues.');
+        }
+        
+        // Check if the file content response is valid
+        if (!fileContentResponse.data || !fileContentResponse.data.content) {
+            throw new Error('GitHub API returned invalid file content response. This usually means authentication is required.');
         }
 
         const content = Buffer.from(fileContentResponse.data.content, 'base64').toString('utf-8');
@@ -430,6 +531,10 @@ async function getFileBlame(octokit: Octokit, owner: string, repo: string, path:
             console.warn('This appears to be an authentication issue. Please provide a valid GitHub token.');
         }
         
+        if (error.message && error.message.includes('<html>')) {
+            console.warn('GitHub API returned an HTML error page. This usually means rate limiting or authentication issues.');
+        }
+        
         return [];
     }
 }
@@ -449,9 +554,23 @@ async function getRepositoryInfo(octokit: Octokit, owner: string, repo: string) 
 
 const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     // Find the GitHub file header to inject our UI
-    const fileHeader = document.querySelector('.file-header') || 
-                      document.querySelector('.Box-header') ||
-                      document.querySelector('.d-flex.flex-column.flex-md-row');
+    // For PR pages, we need to look in different places
+    const isPR = window.location.href.includes('/pull/');
+    
+    let fileHeader;
+    if (isPR) {
+        // For PR pages, look for the file header in the diff view
+        fileHeader = document.querySelector('.file-header') || 
+                    document.querySelector('.Box-header') ||
+                    document.querySelector('.d-flex.flex-column.flex-md-row') ||
+                    document.querySelector('[data-testid="file-header"]') ||
+                    document.querySelector('.js-file-header');
+    } else {
+        // For regular blob pages, use the standard selectors
+        fileHeader = document.querySelector('.file-header') || 
+                    document.querySelector('.Box-header') ||
+                    document.querySelector('.d-flex.flex-column.flex-md-row');
+    }
 
     if (!fileHeader) {
         throw new Error('Could not find GitHub file header');
@@ -471,7 +590,7 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
 
     // Text container with GitHub-style styling
     const textContainer = document.createElement("span");
-    textContainer.innerText = "Mantis GitBlame";
+    textContainer.innerText = isPR ? "Mantis GitBlame (PR)" : "Mantis GitBlame";
     textContainer.classList.add("font-semibold", "text-sm");
     // Use CSS custom properties for gradient text since Tailwind doesn't support it
     textContainer.style.background = "linear-gradient(90deg, #0366d6, #28a745)";
