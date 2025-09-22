@@ -573,7 +573,7 @@ const ConnectionDialog = ({ activeConnections, close }: { activeConnections: Man
                         Space was created successfully and injected{" "}
                         <span className="text-blue-600">
                             <a
-                                href={`https://mantisdev.csail.mit.edu/space/${spaceId}/`}
+                                href={`${process.env.PLASMO_PUBLIC_FRONTEND}/space/${spaceId}/`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
