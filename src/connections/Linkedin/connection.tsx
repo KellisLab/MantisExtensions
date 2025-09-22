@@ -3,7 +3,7 @@ import { GenerationProgress } from "../types";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 import wikiIcon from "data-base64:../../../assets/wiki.png";
 
-import { v4 as uuidv4 } from 'uuid';
+import { getUuidV4 } from "../../driver";
 
 
 
@@ -65,7 +65,7 @@ const createSpace = async (
               const company = row[companyIdx];
               const url = linkIdx !== -1 ? row[linkIdx] : "";
               result.push({
-                uuid: uuidv4(),
+                uuid: getUuidV4(),
                 title: `Applied Job: ${title}`,
                 text: `Applied to ${title} at ${company}`,
                 link: url,
@@ -122,7 +122,7 @@ const createSpace = async (
   const name = document.querySelector("h1.text-heading-xlarge")?.textContent?.trim() || "Unknown Name";
   const headline = document.querySelector(".text-body-medium.break-words")?.textContent?.trim() || "";
   extractedData.push({
-    uuid: uuidv4(),
+    uuid: getUuidV4(),
     title: name,
     text: sanitize(headline),
     link: window.location.href,
@@ -139,7 +139,7 @@ const createSpace = async (
   const about = aboutSection?.innerText?.trim();
   if (about) {
     extractedData.push({
-      uuid: uuidv4(),
+      uuid: getUuidV4(),
       title: "About",
       text: sanitize(about),
       link: window.location.href,
@@ -161,7 +161,7 @@ const createSpace = async (
     const description = entry.innerText?.trim();
     if (jobTitle && description) {
       extractedData.push({
-        uuid: uuidv4(),
+        uuid: getUuidV4(),
         title: `Experience: ${jobTitle}`,
         text: sanitize(description),
         link: window.location.href,
@@ -184,7 +184,7 @@ const createSpace = async (
     const eduDetails = entry.innerText?.trim();
     if (school && eduDetails) {
       extractedData.push({
-        uuid: uuidv4(),
+        uuid: getUuidV4(),
         title: `Education: ${school}`,
         text: sanitize(eduDetails),
         link: window.location.href,
@@ -206,7 +206,7 @@ const createSpace = async (
     if (!seen.has(connectionUrl)) {
       seen.add(connectionUrl);
       extractedData.push({
-        uuid: uuidv4(),
+        uuid: getUuidV4(),
         title: `Connection: ${connectionName}`,
         text: `Connected with ${connectionName}`,
         link: connectionUrl,
@@ -232,7 +232,7 @@ if (activitySection) {
     const postContent = card.textContent?.trim().replace(/\s+/g, " ") || "LinkedIn Activity";
 
     extractedData.push({
-      uuid: uuidv4(),
+      uuid: getUuidV4(),
       title: `Activity: ${postContent.slice(0, 40)}...`,
       text: postContent,
       link: postUrl,
@@ -269,7 +269,7 @@ const getMessagesFromIframe = async (): Promise<any[]> => {
             : "https://www.linkedin.com/messaging/";
 
           return {
-            uuid: uuidv4(),
+            uuid: getUuidV4(),
             title: `Message with ${name}`,
             text: `${timestamp} - ${snippet}`,
             link: threadUrl,
@@ -312,7 +312,7 @@ const getFollowedCompanies = async (): Promise<any[]> => {
           const link = (card.querySelector("a") as HTMLAnchorElement)?.href || "";
 
           return {
-            uuid: uuidv4(),
+            uuid: getUuidV4(),
             title: `Following: ${name}`,
             text: subtitle,
             link,
