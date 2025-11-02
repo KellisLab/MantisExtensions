@@ -155,7 +155,7 @@ function getPageContent() {
         return result || `Page from ${domain}`;
         
     } catch (error) {
-        console.log('Error extracting page content:', error);
+        console.error('Error extracting page content:', error);
         
         // Simple fallback
         const domain = window.location.hostname;
