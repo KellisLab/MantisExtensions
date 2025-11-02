@@ -39,7 +39,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         }
                     }
                 } catch (error) {
-                    console.log(`Could not get content for tab ${tab.id}:`, error);
+                    console.error(`Could not get content for tab ${tab.id}:`, error);
                     // Set a fallback description
                     tabData.pageContent = `Content from ${tab.url ? new URL(tab.url).hostname : 'unknown site'} - unable to read page content`;
                 }
