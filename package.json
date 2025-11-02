@@ -65,6 +65,7 @@
       "tabs",
       "history",
       "activeTab",
+      "scripting",
       "storage",
       "cookies"
     ],

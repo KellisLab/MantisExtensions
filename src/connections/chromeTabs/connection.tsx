@@ -8,10 +8,13 @@ const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 
-// Function to get tabs via message passing to background script
-const getTabsViaMessage = (): Promise<chrome.tabs.Tab[]> => {
+interface TabWithContent extends chrome.tabs.Tab {
+    pageContent?: string;
+}
+
+const getTabsWithContentViaMessage = (): Promise<TabWithContent[]> => {
     return new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ action: "getTabs" }, (response) => {
+        chrome.runtime.sendMessage({ action: "getTabsWithContent" }, (response) => {
             if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
             } else if (response.error) {
@@ -23,22 +26,23 @@ const getTabsViaMessage = (): Promise<chrome.tabs.Tab[]> => {
     });
 };
 
+
 const createSpace = async (injectUI: injectUIType, setProgress: setProgressType, onMessage: onMessageType, registerListeners: registerListenersType, establishLogSocket: establishLogSocketType) => {
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const extractedData = [];
 
-    try {        
+    try {
         // Get tabs via message passing
-        const tabs = await getTabsViaMessage();
+        const tabs = await getTabsWithContentViaMessage();
         
         if (!tabs || tabs.length === 0) {
             throw new Error('No tabs found');
         }
-        // Process each tab
+
+        // Process each tab (no duplication, no domain grouping)
         tabs.forEach((tab, index) => {
             if (tab.title && tab.url) {
-                // Extract domain for better organization
                 let domain = '';
                 try {
                     domain = new URL(tab.url).hostname;
@@ -46,67 +50,32 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
                     domain = 'unknown';
                 }
 
+                // Get page content if available
+                let pageContent = '';
+                if (tab.pageContent) {
+                    pageContent = tab.pageContent;
+                } else {
+                    pageContent = `Page from ${domain}`;
+                }
+
                 extractedData.push({
                     title: tab.title,
                     semantic_title: `${tab.active ? 'Active' : 'Background'} tab: ${tab.title}`,
                     link: tab.url,
-                    snippet: `Tab ${index + 1} from ${domain} - ${tab.active ? 'Currently active' : 'Background tab'}`
+                    snippet: `Tab ${index + 1}: ${pageContent}`
                 });
             }
         });
 
-        // Group tabs by domain for additional insights
-        const domainGroups: Record<string, chrome.tabs.Tab[]> = {};
-        tabs.forEach(tab => {
-            if (tab.url) {
-                try {
-                    const domain = new URL(tab.url).hostname;
-                    if (!domainGroups[domain]) {
-                        domainGroups[domain] = [];
-                    }
-                    domainGroups[domain].push(tab);
-                } catch (e) {
-                    // Skip invalid URLs
-                }
-            }
-        });
-
-        // Add domain summaries
-        Object.entries(domainGroups).forEach(([domain, domainTabs]: [string, chrome.tabs.Tab[]]) => {
-            if (domainTabs.length > 1) {
-                extractedData.push({
-                    title: `${domain} - ${domainTabs.length} tabs`,
-                    semantic_title: `Domain analysis: ${domain}`,
-                    link: `https://${domain}`,
-                    snippet: `You have ${domainTabs.length} tabs open from ${domain}: ${domainTabs.map(t => t.title).join(', ')}`
-                });
-            }
-        });
-
-        // Duplicate data to meet minimum requirements if needed
-        if (extractedData.length > 0 && extractedData.length < 100) {
-            const originalCount = extractedData.length;
-            while (extractedData.length < 100) {
-                const originalItem = extractedData[extractedData.length % originalCount];
-                const variation = Math.floor(extractedData.length / originalCount) + 1;
-                
-                extractedData.push({
-                    title: `${originalItem.title} (Context ${variation})`,
-                    semantic_title: `${originalItem.semantic_title} - Analysis ${variation}`,
-                    link: originalItem.link,
-                    snippet: `${originalItem.snippet} [Extended analysis context ${variation}]`
-                });
-            }
+        // Check if we have enough data
+        if (extractedData.length < 3) {
+            throw new Error('Not enough tabs open for meaningful space creation');
         }
 
         setProgress(GenerationProgress.CREATING_SPACE);
 
-        const spaceData = await reqSpaceCreation(extractedData, {
-            "title": "title",
-            "semantic_title": "semantic",
-            "link": "links",
-            "snippet": "semantic"
-        }, establishLogSocket, `Chrome Tabs Analysis (${tabs.length} tabs)`);
+        // Use automatic retry for space creation
+        const spaceData = await createSpaceWithAutoRetry(extractedData, establishLogSocket, `Chrome Tabs Space (${tabs.length} tabs)`);
 
         setProgress(GenerationProgress.INJECTING_UI);
 
@@ -127,7 +96,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             return null;
         }
         
-        if (errorMessage.includes('No tabs found')) {
+        if (errorMessage.includes('Not enough tabs') || errorMessage.includes('No tabs found')) {
             showNoTabsError();
             return null;
         }
@@ -135,6 +104,41 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         throw error;
     }
 }
+
+// New function for automatic retry
+const createSpaceWithAutoRetry = async (extractedData: any[], establishLogSocket: any, title: string, maxRetries = 5) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            
+            if (attempt > 1) {
+                // Wait for server to finish background processing
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            
+            return await reqSpaceCreation(extractedData, {
+                "title": "title",
+                "semantic_title": "semantic",
+                "link": "links",
+                "snippet": "semantic"
+            }, establishLogSocket, title);
+            
+        } catch (error) {
+            const errorMessage = error.message || error.toString();
+            
+            // Check if it's a timeout error and we have retries left
+            if ((errorMessage.includes('504') || 
+                 errorMessage.includes('timeout') || 
+                 errorMessage.includes('Gateway Time-out')) && 
+                 attempt < maxRetries) {
+                
+                continue; // Try again
+            }
+            
+            // If it's not a timeout or we're out of retries, throw the error
+            throw error;
+        }
+    }
+};
 
 // Error handlers
 const showDatasetTooSmallError = (dataCount: number) => {
@@ -158,7 +162,7 @@ const showDatasetTooSmallError = (dataCount: number) => {
             <strong style="font-size: 16px;">Not Enough Data</strong>
         </div>
         <p style="margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;">
-            We found ${dataCount} items, but need at least 100 to create a meaningful analysis.
+            We found ${dataCount} items, but need at least 100 to create a meaningful space.
         </p>
         <button onclick="this.parentElement.remove()" style="
             background: rgba(255, 255, 255, 0.2);
