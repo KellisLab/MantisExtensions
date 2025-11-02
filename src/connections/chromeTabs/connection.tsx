@@ -106,7 +106,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 }
 
 // New function for automatic retry
-const createSpaceWithAutoRetry = async (extractedData: any[], establishLogSocket: any, title: string, maxRetries = 5) => {
+const createSpaceWithAutoRetry = async (extractedData: any[], establishLogSocket: establishLogSocketType, title: string, maxRetries = 5) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             
