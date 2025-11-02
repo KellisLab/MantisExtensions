@@ -62,6 +62,9 @@
   },
   "manifest": {
     "permissions": [
+      "tabs",
+      "history",
+      "activeTab",
       "storage",
       "cookies"
     ],

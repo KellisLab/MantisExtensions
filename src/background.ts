@@ -1,3 +1,20 @@
+// This is used to get all tabs in the browser
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getTabs") {
+        chrome.tabs.query({}, (tabs) => {
+            if (chrome.runtime.lastError) {
+                sendResponse({ error: chrome.runtime.lastError.message });
+            } else {
+                sendResponse({ tabs: tabs });
+            }
+        });
+        return true; // Keep message channel open for async response
+    }
+    
+    // Don't interfere with other message handlers - let them continue
+    return false;
+});
+
 // This is used to register cookies in the browser
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "setCookie") {
