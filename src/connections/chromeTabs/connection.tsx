@@ -199,7 +199,7 @@ const showNoTabsError = () => {
             <strong style="font-size: 16px;">No Tabs Found</strong>
         </div>
         <p style="margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;">
-            Unable to access your browser tabs. Please make sure the extension has proper permissions.
+            Unable to gather enough tab information. Please ensure the extension has permissions and that you have at least 3 tabs open.
         </p>
         <button onclick="this.parentElement.remove()" style="
             background: rgba(255, 255, 255, 0.2);
