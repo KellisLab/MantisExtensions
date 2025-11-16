@@ -4,13 +4,36 @@ import { GenerationProgress } from "../types";
 import chromeIcon from "data-base64:../../../assets/chrome.png";
 import { getSpacePortal, registerAuthCookies, reqSpaceCreation } from "../../driver";
 
-const trigger = (url: string) => {
-    return url.includes("google.com/search");
-}
 
 interface TabWithContent extends chrome.tabs.Tab {
     pageContent?: string;
 }
+
+class DatasetTooSmallError extends Error {
+    constructor(public dataCount: number, message?: string) {
+        super(message || `Dataset too small: ${dataCount} items`);
+        this.name = 'DatasetTooSmallError';
+    }
+}
+
+class NoTabsFoundError extends Error {
+    constructor(message?: string) {
+        super(message || 'No tabs found');
+        this.name = 'NoTabsFoundError';
+    }
+}
+
+class InsufficientTabsError extends Error {
+    constructor(public tabCount: number, message?: string) {
+        super(message || `Not enough tabs: ${tabCount}`);
+        this.name = 'InsufficientTabsError';
+    }
+}
+
+const trigger = (url: string) => {
+    return url.includes("google.com/search");
+}
+
 
 const getTabsWithContentViaMessage = (): Promise<TabWithContent[]> => {
     return new Promise((resolve, reject) => {
@@ -31,13 +54,14 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const extractedData = [];
+    const MIN_TAB_COUNT = 3;
 
     try {
         // Get tabs via message passing
         const tabs = await getTabsWithContentViaMessage();
         
         if (!tabs || tabs.length === 0) {
-            throw new Error('No tabs found');
+            throw new NoTabsFoundError();
         }
 
         // Process each tab (no duplication, no domain grouping)
@@ -68,8 +92,8 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
         });
 
         // Check if we have enough data
-        if (extractedData.length < 3) {
-            throw new Error('Not enough tabs open for meaningful space creation');
+        if (extractedData.length < MIN_TAB_COUNT) {
+            throw new InsufficientTabsError(extractedData.length, 'Not enough tabs open for meaningful space creation');
         }
 
         setProgress(GenerationProgress.CREATING_SPACE);
@@ -89,15 +113,23 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     } catch (error) {
         console.error('Error in Chrome Tabs connection:', error);
         
+        // Handle custom errors with instanceof
+        if (error instanceof DatasetTooSmallError) {
+            showDatasetTooSmallError(error.dataCount);
+            return null;
+        }
+        
+        if (error instanceof NoTabsFoundError || error instanceof InsufficientTabsError) {
+            showNoTabsError();
+            return null;
+        }
+        
+        // Handle server-side dataset errors by checking the error message
+        // (These come from external API, so we still need string checking)
         const errorMessage = error.message || error.toString();
         if (errorMessage.includes('Dataset too small') || 
             errorMessage.includes('minimum 100 rows are required')) {
             showDatasetTooSmallError(extractedData.length);
-            return null;
-        }
-        
-        if (errorMessage.includes('Not enough tabs') || errorMessage.includes('No tabs found')) {
-            showNoTabsError();
             return null;
         }
         
@@ -124,6 +156,12 @@ const createSpaceWithAutoRetry = async (extractedData: { title: string; semantic
             
         } catch (error) {
             const errorMessage = error.message || error.toString();
+            
+            // Check if it's a server-side dataset error and convert to custom error
+            if (errorMessage.includes('Dataset too small') || 
+                errorMessage.includes('minimum 100 rows are required')) {
+                throw new DatasetTooSmallError(extractedData.length, errorMessage);
+            }
             
             // Check if it's a timeout error and we have retries left
             if ((errorMessage.includes('504') || 
@@ -157,25 +195,41 @@ const showDatasetTooSmallError = (dataCount: number) => {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
 
-    errorDiv.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-            <strong style="font-size: 16px;">Not Enough Data</strong>
-        </div>
-        <p style="margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;">
-            We found ${dataCount} items, but need at least 100 to create a meaningful space.
-        </p>
-        <button onclick="this.parentElement.remove()" style="
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-        ">Got it</button>
+    // Create header container
+    const headerDiv = document.createElement('div');
+    headerDiv.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
+    
+    const title = document.createElement('strong');
+    title.style.fontSize = '16px';
+    title.textContent = 'Not Enough Data';
+    headerDiv.appendChild(title);
+
+    // Create message paragraph
+    const message = document.createElement('p');
+    message.style.cssText = 'margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;';
+    message.textContent = `We found ${dataCount} tabs, but need more to create a meaningful space (recommended: ~70-100).`;
+
+    // Create button
+    const button = document.createElement('button');
+    button.style.cssText = `
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
     `;
+    button.textContent = 'Got it';
+
+    // Add event listener for button click
+    button.addEventListener('click', () => errorDiv.remove());
+
+    // Assemble the error div
+    errorDiv.appendChild(headerDiv);
+    errorDiv.appendChild(message);
+    errorDiv.appendChild(button);
 
     document.body.appendChild(errorDiv);
-    setTimeout(() => errorDiv.remove(), 8000);
 };
 
 const showNoTabsError = () => {
@@ -194,28 +248,45 @@ const showNoTabsError = () => {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
 
-    errorDiv.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-            <strong style="font-size: 16px;">No Tabs Found</strong>
-        </div>
-        <p style="margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;">
-            Unable to gather enough tab information. Please ensure the extension has permissions and that you have at least 3 tabs open.
-        </p>
-        <button onclick="this.parentElement.remove()" style="
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-        ">OK</button>
+    // Create header container
+    const headerDiv = document.createElement('div');
+    headerDiv.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
+    
+    const title = document.createElement('strong');
+    title.style.fontSize = '16px';
+    title.textContent = 'No Tabs Found';
+    headerDiv.appendChild(title);
+
+    // Create message paragraph
+    const message = document.createElement('p');
+    message.style.cssText = 'margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;';
+    message.textContent = 'Unable to gather enough tab information. Please ensure the extension has permissions and that you have at least 3 tabs open.';
+
+    // Create button
+    const button = document.createElement('button');
+    button.style.cssText = `
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
     `;
+    button.textContent = 'OK';
+
+    // Add event listener for button click
+    button.addEventListener('click', () => errorDiv.remove());
+
+    // Assemble the error div
+    errorDiv.appendChild(headerDiv);
+    errorDiv.appendChild(message);
+    errorDiv.appendChild(button);
 
     document.body.appendChild(errorDiv);
-    setTimeout(() => errorDiv.remove(), 5000);
 };
-
 const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
+    // This is very specific, and may break in the future.
+    // It was the only thing I figured out that could work.
     const menu = document.querySelector("#hdtb-sc > div > div > div.crJ18e")?.children[0];
     
     if (!menu) {

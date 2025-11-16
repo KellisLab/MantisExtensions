@@ -119,8 +119,6 @@ function getPageContent() {
         // Clean up the text
         allText = allText
             .replace(/\s+/g, ' ')           // Replace multiple whitespace with single space
-            .replace(/\n+/g, ' ')           // Replace newlines with spaces
-            .replace(/\t+/g, ' ')           // Replace tabs with spaces
             .trim();
         
         // Take a reasonable sample of the text (first 300 chars)
