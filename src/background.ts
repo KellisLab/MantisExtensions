@@ -18,11 +18,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (chrome.runtime.lastError) {
                 sendResponse({ error: chrome.runtime.lastError.message });
                 return;
-            }
-
-            const tabsWithContent = [];
-            
-            for (const tab of tabs) {
+            }        
+                
+            const tabsWithContentPromises = tabs.map(async (tab) => {
                 const tabData = { ...tab, pageContent: '' }; // Add pageContent property
                 
                 // Try to get page content for each tab
@@ -44,8 +42,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     tabData.pageContent = `Content from ${tab.url ? new URL(tab.url).hostname : 'unknown site'} - unable to read page content`;
                 }
                 
-                tabsWithContent.push(tabData);
-            }
+                return tabData;
+            });
+
+            const tabsWithContent = await Promise.all(tabsWithContentPromises);
             
             sendResponse({ tabs: tabsWithContent });
         });

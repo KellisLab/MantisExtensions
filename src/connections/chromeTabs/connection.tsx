@@ -33,7 +33,9 @@ class InsufficientTabsError extends Error {
 const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
-
+const MAX_RETRIES = 5;
+const MIN_TAB_COUNT = 3;
+const RETRY_DELAY_MS = 3000;
 
 const getTabsWithContentViaMessage = (): Promise<TabWithContent[]> => {
     return new Promise((resolve, reject) => {
@@ -54,7 +56,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
     setProgress(GenerationProgress.GATHERING_DATA);
 
     const extractedData = [];
-    const MIN_TAB_COUNT = 3;
 
     try {
         // Get tabs via message passing
@@ -138,13 +139,13 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 }
 
 // New function for automatic retry
-const createSpaceWithAutoRetry = async (extractedData: { title: string; semantic_title: string; link: string; snippet: string; }[], establishLogSocket: establishLogSocketType, title: string, maxRetries = 5) => {
+const createSpaceWithAutoRetry = async (extractedData: { title: string; semantic_title: string; link: string; snippet: string; }[], establishLogSocket: establishLogSocketType, title: string, maxRetries = MAX_RETRIES) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             
             if (attempt > 1) {
                 // Wait for server to finish background processing
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
             }
             
             return await reqSpaceCreation(extractedData, {
@@ -179,13 +180,12 @@ const createSpaceWithAutoRetry = async (extractedData: { title: string; semantic
 };
 
 // Error handlers
-const showDatasetTooSmallError = (dataCount: number) => {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
+// Base styles for error notifications
+const getBaseErrorStyles = () => ({
+    container: `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
         color: white;
         padding: 20px;
         border-radius: 12px;
@@ -193,33 +193,53 @@ const showDatasetTooSmallError = (dataCount: number) => {
         z-index: 10000;
         max-width: 400px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    // Create header container
-    const headerDiv = document.createElement('div');
-    headerDiv.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
-    
-    const title = document.createElement('strong');
-    title.style.fontSize = '16px';
-    title.textContent = 'Not Enough Data';
-    headerDiv.appendChild(title);
-
-    // Create message paragraph
-    const message = document.createElement('p');
-    message.style.cssText = 'margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;';
-    message.textContent = `We found ${dataCount} tabs, but need more to create a meaningful space (recommended: ~70-100).`;
-
-    // Create button
-    const button = document.createElement('button');
-    button.style.cssText = `
+    `,
+    header: 'display: flex; align-items: center; margin-bottom: 12px;',
+    title: 'font-size: 16px;',
+    message: 'margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;',
+    button: `
         background: rgba(255, 255, 255, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.3);
         color: white;
         padding: 8px 16px;
         border-radius: 6px;
         cursor: pointer;
+    `
+});
+
+// Generic error notification creator
+const createErrorNotification = (config: {
+    background: string;
+    title: string;
+    message: string;
+    buttonText: string;
+}) => {
+    const styles = getBaseErrorStyles();
+    const errorDiv = document.createElement('div');
+    
+    errorDiv.style.cssText = `
+        ${styles.container}
+        background: ${config.background};
     `;
-    button.textContent = 'Got it';
+
+    // Create header container
+    const headerDiv = document.createElement('div');
+    headerDiv.style.cssText = styles.header;
+    
+    const title = document.createElement('strong');
+    title.style.cssText = styles.title;
+    title.textContent = config.title;
+    headerDiv.appendChild(title);
+
+    // Create message paragraph
+    const message = document.createElement('p');
+    message.style.cssText = styles.message;
+    message.textContent = config.message;
+
+    // Create button
+    const button = document.createElement('button');
+    button.style.cssText = styles.button;
+    button.textContent = config.buttonText;
 
     // Add event listener for button click
     button.addEventListener('click', () => errorDiv.remove());
@@ -232,57 +252,22 @@ const showDatasetTooSmallError = (dataCount: number) => {
     document.body.appendChild(errorDiv);
 };
 
+const showDatasetTooSmallError = (dataCount: number) => {
+    createErrorNotification({
+        background: 'linear-gradient(135deg, #ff6b6b, #ee5a52)',
+        title: 'Not Enough Data',
+        message: `We found ${dataCount} tabs, but need more to create a meaningful space (recommended: ~70-100).`,
+        buttonText: 'Got it'
+    });
+};
+
 const showNoTabsError = () => {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #ff9500, #ff6b35);
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        z-index: 10000;
-        max-width: 400px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    // Create header container
-    const headerDiv = document.createElement('div');
-    headerDiv.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
-    
-    const title = document.createElement('strong');
-    title.style.fontSize = '16px';
-    title.textContent = 'No Tabs Found';
-    headerDiv.appendChild(title);
-
-    // Create message paragraph
-    const message = document.createElement('p');
-    message.style.cssText = 'margin: 0 0 12px 0; line-height: 1.4; font-size: 14px;';
-    message.textContent = 'Unable to gather enough tab information. Please ensure the extension has permissions and that you have at least 3 tabs open.';
-
-    // Create button
-    const button = document.createElement('button');
-    button.style.cssText = `
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-    `;
-    button.textContent = 'OK';
-
-    // Add event listener for button click
-    button.addEventListener('click', () => errorDiv.remove());
-
-    // Assemble the error div
-    errorDiv.appendChild(headerDiv);
-    errorDiv.appendChild(message);
-    errorDiv.appendChild(button);
-
-    document.body.appendChild(errorDiv);
+    createErrorNotification({
+        background: 'linear-gradient(135deg, #ff9500, #ff6b35)',
+        title: 'No Tabs Found',
+        message: 'Unable to gather enough tab information. Please ensure the extension has permissions and that you have at least 3 tabs open.',
+        buttonText: 'OK'
+    });
 };
 const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
     // This is very specific, and may break in the future.
@@ -324,8 +309,6 @@ const injectUI = async (space_id: string, onMessage: onMessageType, registerList
             iframeScalerParent.style.display = "none";
             textContainer.style.background = "linear-gradient(90deg, #4285f4, #34a853)";
         }
-        textContainer.style.backgroundClip = "text";
-        textContainer.style.webkitTextFillColor = "transparent";
     });
 
     label.appendChild(textContainer);
