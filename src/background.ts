@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ error: chrome.runtime.lastError.message });
                 return;
             }        
-                
+
             const tabsWithContentPromises = tabs.map(async (tab) => {
                 const tabData = { ...tab, pageContent: '' }; // Add pageContent property
                 
@@ -56,6 +56,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
 });
 
+// This is for filtering text nodes in the page content extraction
+// It feels less appropriate to have this logic here, 
+// but this function was long enough to warrant its own helper
+const acceptNode = (node, excludedTags = ['script', 'style', 'noscript', 'iframe', 'object'], minTextLength = 3) => {
+    // Skip script, style, and other non-visible content
+    const parent = node.parentElement;
+    if (!parent) return NodeFilter.FILTER_REJECT;
+    
+    const tagName = parent.tagName.toLowerCase();
+    if (excludedTags.includes(tagName)) {
+        return NodeFilter.FILTER_REJECT;
+    }
+    
+    // Skip if parent is hidden
+    const style = window.getComputedStyle(parent);
+    if (style.display === 'none' || style.visibility === 'hidden') {
+        return NodeFilter.FILTER_REJECT;
+    }
+    
+    // Only accept text nodes with meaningful content
+    const text = node.textContent?.trim() || '';
+    if (text.length < minTextLength) return NodeFilter.FILTER_REJECT;
+    
+    return NodeFilter.FILTER_ACCEPT;
+};
+
 // This gets the page content from a tab.
 function getPageContent() {
     try {
@@ -78,30 +104,7 @@ function getPageContent() {
             const walker = document.createTreeWalker(
                 document.body || document.documentElement,
                 NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: function(node) {
-                        // Skip script, style, and other non-visible content
-                        const parent = node.parentElement;
-                        if (!parent) return NodeFilter.FILTER_REJECT;
-                        
-                        const tagName = parent.tagName.toLowerCase();
-                        if (['script', 'style', 'noscript', 'iframe', 'object'].includes(tagName)) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        
-                        // Skip if parent is hidden
-                        const style = window.getComputedStyle(parent);
-                        if (style.display === 'none' || style.visibility === 'hidden') {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                        
-                        // Only accept text nodes with meaningful content
-                        const text = node.textContent?.trim() || '';
-                        if (text.length < 3) return NodeFilter.FILTER_REJECT;
-                        
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
+                { acceptNode }
             );
             
             const textNodes = [];
