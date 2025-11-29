@@ -270,58 +270,7 @@ const showNoTabsError = () => {
     });
 };
 const injectUI = async (space_id: string, onMessage: onMessageType, registerListeners: registerListenersType) => {
-    // This is very specific, and may break in the future.
-    // It was the only thing I figured out that could work.
-    const menu = document.querySelector("#hdtb-sc > div > div > div.crJ18e")?.children[0];
-    
-    if (!menu) {
-        console.error('Could not find Google search menu');
-        return null;
-    }
-
-    const div = document.createElement("div");
-    const label = document.createElement("label");
-    label.style.display = "inline-flex";
-    label.style.alignItems = "center";
-    label.style.cursor = "pointer";
-    label.className = "nPDzT T3FoJb YmvwI";
-    label.style.marginLeft = "8px";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.style.display = "none";
-
-    const textContainer = document.createElement("span");
-    textContainer.innerText = "Tabs";
-    textContainer.style.background = "linear-gradient(90deg, #4285f4, #34a853)";
-    textContainer.style.backgroundClip = "text";
-    textContainer.style.webkitTextFillColor = "transparent";
-    textContainer.style.fontWeight = "bold";
-
-    await registerAuthCookies();
-    const iframeScalerParent = await getSpacePortal(space_id, onMessage, registerListeners);
-      
-    checkbox.addEventListener("change", () => {
-        if (checkbox.checked) {
-            iframeScalerParent.style.display = "block";
-            textContainer.style.background = "linear-gradient(90deg, #1a73e8, #137333)";
-        } else {
-            iframeScalerParent.style.display = "none";
-            textContainer.style.background = "linear-gradient(90deg, #4285f4, #34a853)";
-        }
-    });
-
-    label.appendChild(textContainer);
-    label.appendChild(checkbox);
-    div.appendChild(label);
-
-    const appbar = document.querySelector("#appbar > div > div:nth-child(2)");
-    if (appbar) {
-        appbar.prepend(iframeScalerParent);
-    }
-
-    menu.insertBefore(div, menu.children[2]);
-    return div;
+    return null;
 }
 
 export const ChromeTabsConnection: MantisConnection = {
