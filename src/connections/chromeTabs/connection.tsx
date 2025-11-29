@@ -23,13 +23,6 @@ class NoTabsFoundError extends Error {
     }
 }
 
-class InsufficientTabsError extends Error {
-    constructor(public tabCount: number, message?: string) {
-        super(message || `Not enough tabs: ${tabCount}`);
-        this.name = 'InsufficientTabsError';
-    }
-}
-
 const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
@@ -94,7 +87,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
         // Check if we have enough data
         if (extractedData.length < MIN_TAB_COUNT) {
-            throw new InsufficientTabsError(extractedData.length, 'Not enough tabs open for meaningful space creation');
+            throw new DatasetTooSmallError(extractedData.length, 'Not enough tabs open for meaningful space creation');
         }
 
         setProgress(GenerationProgress.CREATING_SPACE);
@@ -120,7 +113,7 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
             return null;
         }
         
-        if (error instanceof NoTabsFoundError || error instanceof InsufficientTabsError) {
+        if (error instanceof NoTabsFoundError) {
             showNoTabsError();
             return null;
         }
