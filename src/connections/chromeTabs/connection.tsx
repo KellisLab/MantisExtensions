@@ -27,7 +27,6 @@ const trigger = (url: string) => {
     return url.includes("google.com/search");
 }
 const MAX_RETRIES = 5;
-const MIN_TAB_COUNT = 3;
 const RETRY_DELAY_MS = 3000;
 
 const getTabsWithContentViaMessage = (): Promise<TabWithContent[]> => {
@@ -84,11 +83,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
                 });
             }
         });
-
-        // Check if we have enough data
-        if (extractedData.length < MIN_TAB_COUNT) {
-            throw new DatasetTooSmallError(extractedData.length, 'Not enough tabs open for meaningful space creation');
-        }
 
         setProgress(GenerationProgress.CREATING_SPACE);
 
