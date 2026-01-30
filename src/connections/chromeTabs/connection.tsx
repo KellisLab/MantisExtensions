@@ -85,8 +85,6 @@ const createSpace = async (injectUI: injectUIType, setProgress: setProgressType,
 
         const spaceData = await createSpaceWithAutoRetry(extractedData, establishLogSocket, `Chrome Tabs Space (${tabs.length} tabs)`);
 
-        console.log('🔍 Full spaceData:', JSON.stringify(spaceData, null, 2));
-
         setProgress(GenerationProgress.INJECTING_UI);
 
         const spaceId = spaceData.space_id;

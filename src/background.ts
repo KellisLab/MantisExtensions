@@ -22,7 +22,6 @@ async function createTabGroupsFromClusters(clusters: [number, number[], string][
                 collapsed: tabIds.length > 5
             });
             
-            console.log(`✅ Created group "${label}" with ${tabIds.length} tabs`);
         }
     } catch (error) {
         console.error('Error creating tab groups:', error);
@@ -35,7 +34,7 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
             const backendUrl = process.env.PLASMO_PUBLIC_MANTIS_API || 'http://localhost:8000';
             const wsUrl = backendUrl.replace('http', 'ws') + `/ws/space/${spaceId}/`;
             
-            console.log('🔍 Connecting to WebSocket:', wsUrl);
+            // Connecting to WebSocket
 
             const ws = new WebSocket(wsUrl);
             let clustersReceived = false;
@@ -46,25 +45,20 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
             const pointToClusterMap = new Map<string, string>();    // ← ADD THIS: Map point ID to cluster ID
             const clusterGroups = new Map<string, number[]>();      // Map cluster ID to tab IDs
 
-            ws.addEventListener('open', () => {
-                console.log('✅ WebSocket connected to space:', spaceId);
-            });
 
             ws.addEventListener('message', (event) => {
                 const data = JSON.parse(event.data);
                 
-                console.log('📨 WebSocket message type:', data.type);
-                
                 // Collect cluster labels (only update with real names, not UUIDs)
                 if (data.type === 'cluster' && data.clusters) {
-                    console.log('📦 Received cluster labels');
+                    
+                    // Recieved Cluster Labels
                     
                     data.clusters.forEach((cluster: any) => {
                         const label = cluster.label?.trim();
                         
                         if (label && !label.startsWith('Cluster ')) {
                             clusterLabels.set(cluster.id, label);
-                            console.log(`  ✓ ${cluster.id}: "${label}"`);
                         }
                     });
                     
@@ -73,7 +67,7 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
                 
                 // First points message: Get cluster assignments (has cluster field)
                 if (data.type === 'points' && data.points && data.points[0]?.cluster && !pointsWithClustersReceived) {
-                    console.log('📍 Processing points with cluster assignments');
+                    // Processing points with cluster assignments
                     
                     data.points.forEach((point: any) => {
                         if (point.cluster && point.id) {
@@ -82,12 +76,11 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
                     });
                     
                     pointsWithClustersReceived = true;
-                    console.log('🎯 Point-to-cluster map created:', pointToClusterMap.size);
                 }
                 
                 // Later points message: Get tab_id metadata (has metadata.tab_id field)
                 if (data.type === 'points' && data.points && data.points[0]?.metadata?.tab_id && !pointsWithMetadataReceived) {
-                    console.log('📍 Processing points with tab IDs');
+                    // Processing points with tab IDs
                     
                     data.points.forEach((point: any) => {
                         const tabId = parseInt(point.metadata.tab_id);
@@ -103,25 +96,22 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
                     });
                     
                     pointsWithMetadataReceived = true;
-                    console.log('🎯 Cluster groups finalized:', clusterGroups.size);
                 }
 
                 if (data.type === 'finished') {
-                    console.log('✅ WebSocket finished loading data');
+                    // WebSocket finished loading data
                     ws.close();
                     
                     if (clustersReceived && pointsWithClustersReceived && pointsWithMetadataReceived && clusterGroups.size > 0) {
                         const result: [number, number[], string][] = Array.from(clusterGroups.entries()).map(
                             ([clusterId, tabIds]) => {
                                 const label = clusterLabels.get(clusterId) || `Cluster ${clusterId}`;
-                                console.log(`📊 ${clusterId}: "${label}" with ${tabIds.length} tabs`);
                                 return [clusterId as any, tabIds, label];
                             }
                         );
                         
                         result.sort((a, b) => b[1].length - a[1].length);
                         
-                        console.log('🎯 Final result being sent:', result.length, 'clusters');
                         resolve(result);
                     } else {
                         reject(new Error(`Missing data: clusters=${clustersReceived}, pointsWithClusters=${pointsWithClustersReceived}, pointsWithMetadata=${pointsWithMetadataReceived}, groups=${clusterGroups.size}`));
@@ -135,9 +125,6 @@ async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, num
                 reject(new Error('WebSocket connection failed'));
             });
 
-            ws.addEventListener('close', () => {
-                console.log('🔌 WebSocket disconnected');
-            });
 
             setTimeout(() => {
                 if (!clustersReceived || !pointsWithClustersReceived || !pointsWithMetadataReceived) {
@@ -186,8 +173,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return;
             }
 
-            console.log(`📊 Processing ${tabs.length} tabs...`);
-            let processed = 0;
+            // Process Tabs
 
             const tabsWithContentPromises = tabs.map(async (tab, index) => {
                 const tabData = { ...tab, pageContent: '' };
@@ -215,16 +201,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     tabData.pageContent = `Content from ${tab.url ? new URL(tab.url).hostname : 'unknown site'} - unable to read page content`;
                 }
                 
-                processed++;
-                if (processed % 10 === 0) {
-                    console.log(`✅ Processed ${processed}/${tabs.length} tabs`);
-                }
                 
                 return tabData;
             });
 
             const tabsWithContent = await Promise.all(tabsWithContentPromises);
-            console.log(`🎉 Finished processing all ${tabs.length} tabs`);
             
             sendResponse({ tabs: tabsWithContent });
         });
