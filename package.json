@@ -67,7 +67,8 @@
       "activeTab",
       "scripting",
       "storage",
-      "cookies"
+      "cookies",
+      "tabGroups"
     ],
     "host_permissions": [
       "https://*/*",

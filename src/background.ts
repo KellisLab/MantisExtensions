@@ -1,58 +1,237 @@
-// This is used to get all tabs in the browser, and some of their conten
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // Handle getTabs request for Chrome Tabs connection
-    if (request.action === "getTabs") {
-        chrome.tabs.query({}, (tabs) => {
-            if (chrome.runtime.lastError) {
-                sendResponse({ error: chrome.runtime.lastError.message });
-            } else {
-                sendResponse({ tabs: tabs });
-            }
-        });
-        return true;
+const CLUSTER_COLORS = [
+    'blue', 'red', 'yellow', 'green', 'pink', 
+    'purple', 'cyan', 'orange', 'grey'
+] as const;
+
+async function createTabGroupsFromClusters(clusters: [number, number[], string][]) {
+    try {
+        // Sort clusters by size (largest first)
+        clusters.sort((a, b) => b[1].length - a[1].length);
+
+        for (const [clusterIndex, [clusterId, tabIds, label]] of clusters.entries()) {
+            if (tabIds.length === 0) continue;
+
+            // Create a group for this cluster
+            const groupId = await chrome.tabs.group({ tabIds });
+            
+            // Update group with cluster name and color
+            const color = CLUSTER_COLORS[clusterIndex % CLUSTER_COLORS.length];
+            await chrome.tabGroups.update(groupId, {
+                title: `${label} (${tabIds.length})`,  // Use the actual cluster label
+                color: color,
+                collapsed: tabIds.length > 5
+            });
+            
+            console.log(`✅ Created group "${label}" with ${tabIds.length} tabs`);
+        }
+    } catch (error) {
+        console.error('Error creating tab groups:', error);
+        throw error;
     }
-    
+}
+async function fetchClustersFromMantis(spaceId: string, tabsMap: Map<number, number>): Promise<[number, number[], string][]> {
+    return new Promise((resolve, reject) => {
+        try {
+            const backendUrl = process.env.PLASMO_PUBLIC_MANTIS_API || 'http://localhost:8000';
+            const wsUrl = backendUrl.replace('http', 'ws') + `/ws/space/${spaceId}/`;
+            
+            console.log('🔍 Connecting to WebSocket:', wsUrl);
+
+            const ws = new WebSocket(wsUrl);
+            let clustersReceived = false;
+            let pointsWithClustersReceived = false;
+            let pointsWithMetadataReceived = false;
+            
+            const clusterLabels = new Map<string, string>();        // Map cluster ID to label
+            const pointToClusterMap = new Map<string, string>();    // ← ADD THIS: Map point ID to cluster ID
+            const clusterGroups = new Map<string, number[]>();      // Map cluster ID to tab IDs
+
+            ws.addEventListener('open', () => {
+                console.log('✅ WebSocket connected to space:', spaceId);
+            });
+
+            ws.addEventListener('message', (event) => {
+                const data = JSON.parse(event.data);
+                
+                console.log('📨 WebSocket message type:', data.type);
+                
+                // Collect cluster labels (only update with real names, not UUIDs)
+                if (data.type === 'cluster' && data.clusters) {
+                    console.log('📦 Received cluster labels');
+                    
+                    data.clusters.forEach((cluster: any) => {
+                        const label = cluster.label?.trim();
+                        
+                        if (label && !label.startsWith('Cluster ')) {
+                            clusterLabels.set(cluster.id, label);
+                            console.log(`  ✓ ${cluster.id}: "${label}"`);
+                        }
+                    });
+                    
+                    clustersReceived = true;
+                }
+                
+                // First points message: Get cluster assignments (has cluster field)
+                if (data.type === 'points' && data.points && data.points[0]?.cluster && !pointsWithClustersReceived) {
+                    console.log('📍 Processing points with cluster assignments');
+                    
+                    data.points.forEach((point: any) => {
+                        if (point.cluster && point.id) {
+                            pointToClusterMap.set(point.id, point.cluster);
+                        }
+                    });
+                    
+                    pointsWithClustersReceived = true;
+                    console.log('🎯 Point-to-cluster map created:', pointToClusterMap.size);
+                }
+                
+                // Later points message: Get tab_id metadata (has metadata.tab_id field)
+                if (data.type === 'points' && data.points && data.points[0]?.metadata?.tab_id && !pointsWithMetadataReceived) {
+                    console.log('📍 Processing points with tab IDs');
+                    
+                    data.points.forEach((point: any) => {
+                        const tabId = parseInt(point.metadata.tab_id);
+                        const pointId = point.id;
+                        const clusterId = pointToClusterMap.get(pointId);
+                        
+                        if (clusterId && tabId) {
+                            if (!clusterGroups.has(clusterId)) {
+                                clusterGroups.set(clusterId, []);
+                            }
+                            clusterGroups.get(clusterId)!.push(tabId);
+                        }
+                    });
+                    
+                    pointsWithMetadataReceived = true;
+                    console.log('🎯 Cluster groups finalized:', clusterGroups.size);
+                }
+
+                if (data.type === 'finished') {
+                    console.log('✅ WebSocket finished loading data');
+                    ws.close();
+                    
+                    if (clustersReceived && pointsWithClustersReceived && pointsWithMetadataReceived && clusterGroups.size > 0) {
+                        const result: [number, number[], string][] = Array.from(clusterGroups.entries()).map(
+                            ([clusterId, tabIds]) => {
+                                const label = clusterLabels.get(clusterId) || `Cluster ${clusterId}`;
+                                console.log(`📊 ${clusterId}: "${label}" with ${tabIds.length} tabs`);
+                                return [clusterId as any, tabIds, label];
+                            }
+                        );
+                        
+                        result.sort((a, b) => b[1].length - a[1].length);
+                        
+                        console.log('🎯 Final result being sent:', result.length, 'clusters');
+                        resolve(result);
+                    } else {
+                        reject(new Error(`Missing data: clusters=${clustersReceived}, pointsWithClusters=${pointsWithClustersReceived}, pointsWithMetadata=${pointsWithMetadataReceived}, groups=${clusterGroups.size}`));
+                    }
+                }
+            });
+
+            ws.addEventListener('error', (error) => {
+                console.error('💥 WebSocket error:', error);
+                ws.close();
+                reject(new Error('WebSocket connection failed'));
+            });
+
+            ws.addEventListener('close', () => {
+                console.log('🔌 WebSocket disconnected');
+            });
+
+            setTimeout(() => {
+                if (!clustersReceived || !pointsWithClustersReceived || !pointsWithMetadataReceived) {
+                    ws.close();
+                    reject(new Error('WebSocket timeout'));
+                }
+            }, 30000);
+
+        } catch (error) {
+            console.error('💥 Error setting up WebSocket:', error);
+            reject(error);
+        }
+    });
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "fetchClusters") {
+        fetchClustersFromMantis(request.spaceId, new Map(request.tabsMap))
+            .then((clusterGroups: [number, number[], string][]) => {  // Add the string type for label
+                createTabGroupsFromClusters(clusterGroups)
+                    .then(() => sendResponse({ success: true }))
+                    .catch(error => sendResponse({ success: false, error: error.message }));
+            })
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        
+        return true; // Keep message channel open for async response
+    }
+});
+
+
+// This is used to get all tabs in the browser, and some of their content
+// Add timeout wrapper function
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, defaultValue: T): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((resolve) => setTimeout(() => resolve(defaultValue), timeoutMs))
+    ]);
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Handle getTabsWithContent request
     if (request.action === "getTabsWithContent") {
         chrome.tabs.query({}, async (tabs) => {
             if (chrome.runtime.lastError) {
                 sendResponse({ error: chrome.runtime.lastError.message });
                 return;
-            }        
+            }
 
-            const tabsWithContentPromises = tabs.map(async (tab) => {
-                const tabData = { ...tab, pageContent: '' }; // Add pageContent property
+            console.log(`📊 Processing ${tabs.length} tabs...`);
+            let processed = 0;
+
+            const tabsWithContentPromises = tabs.map(async (tab, index) => {
+                const tabData = { ...tab, pageContent: '' };
                 
-                // Try to get page content for each tab
                 try {
                     if (tab.id && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
-                        // Execute content script to get page text
-                        const results = await chrome.scripting.executeScript({
-                            target: { tabId: tab.id },
-                            func: getPageContent, // Use 'func' instead of 'function'
-                        });
+                        // Add 5 second timeout per tab
+                        const results = await withTimeout(
+                            chrome.scripting.executeScript({
+                                target: { tabId: tab.id },
+                                func: getPageContent,
+                            }),
+                            5000, // 5 second timeout
+                            null
+                        );
                         
                         if (results && results[0] && results[0].result) {
                             tabData.pageContent = results[0].result;
+                        } else {
+                            tabData.pageContent = `Content from ${new URL(tab.url).hostname} - timed out`;
                         }
                     }
                 } catch (error) {
-                    console.error(`Could not get content for tab ${tab.id}:`, error);
-                    // Set a fallback description
+                    console.warn(`⚠️ Could not get content for tab ${tab.id}:`, error.message);
                     tabData.pageContent = `Content from ${tab.url ? new URL(tab.url).hostname : 'unknown site'} - unable to read page content`;
+                }
+                
+                processed++;
+                if (processed % 10 === 0) {
+                    console.log(`✅ Processed ${processed}/${tabs.length} tabs`);
                 }
                 
                 return tabData;
             });
 
             const tabsWithContent = await Promise.all(tabsWithContentPromises);
+            console.log(`🎉 Finished processing all ${tabs.length} tabs`);
             
             sendResponse({ tabs: tabsWithContent });
         });
         return true;
     }
     
-    // Don't interfere with other message handlers
+    
     return false;
 });
 
